@@ -5,4 +5,4 @@ Un petit module python vous permettant de faire la liason entre les modules ion 
 [Kandinsky module of Numworks](https://github.com/ZetaMap/Kandinsky-Numworks)
 
 ## Nouveau !
-Vous pouvez maintenant installer ce module en utilisant la commande `pip install ion-Numworks` ou `py -m pip install ion-Numworks`
+Vous pouvez maintenant installer ce module en utilisant la commande `pip install ion-Numworks` ou `py -m pip install ion-Numworks` dans un terminal
