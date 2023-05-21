@@ -24,5 +24,6 @@ setup(
     ],
     package_dir={"": "src"},
     packages=find_packages(where="src"),
-    install_requires=["keyboard"],
+    install_requires=["pynput"],
+    python_requires= '>=3.6',
 )

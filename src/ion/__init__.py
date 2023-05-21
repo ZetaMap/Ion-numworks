@@ -3,11 +3,11 @@ This is just a little low level library for fetching keyboard input. <br>
 This is a porting of the Numworks module, and add other methods created by others OS (like Omega or Upsilon).
 """
 
-try: from .util.ion import Ion as __Ion
+try: from .util.ion import Ion as __Ion, OS_MODE
 except ImportError as e:
   if "relative import" not in e.msg: 
     raise
-  from util.ion import Ion as __Ion
+  from util.ion import Ion as __Ion, OS_MODE
 
 __name__ = "ion"
 __version__ = "2.0"
@@ -25,54 +25,14 @@ __all__ = [
 
 
 ### All keys of Numworks
-KEY_LEFT = 0
-KEY_UP = 1
-KEY_DOWN = 2
-KEY_RIGHT = 3
-KEY_OK = 4
-KEY_BACK = 5
-KEY_HOME = 6
-KEY_ONOFF = 7
-KEY_SHIFT = 12
-KEY_ALPHA = 13
-KEY_XNT = 14
-KEY_VAR = 15
-KEY_TOOLBOX = 16
-KEY_BACKSPACE = 17
-KEY_EXP = 18
-KEY_LN = 19
-KEY_LOG = 20
-KEY_IMAGINARY = 21
-KEY_COMMA = 22
-KEY_POWER = 23
-KEY_SINE = 24
-KEY_COSINE = 25
-KEY_TANGENT = 26
-KEY_PI = 27
-KEY_SQRT = 28
-KEY_SQUARE = 29
-KEY_SEVEN = 30
-KEY_EIGHT = 31
-KEY_NINE = 32
-KEY_LEFTPARENTHESIS = 33
-KEY_RIGHTPARENTHESIS = 34
-KEY_FOUR = 36
-KEY_FIVE = 37
-KEY_SIX = 38
-KEY_MULTIPLICATION = 39
-KEY_DIVISION = 40
-KEY_ONE = 42
-KEY_TWO = 43
-KEY_THREE = 44
-KEY_PLUS = 45
-KEY_MINUS = 46
-KEY_ZERO = 48
-KEY_DOT = 49
-KEY_EE = 50
-KEY_ANS = 51
-KEY_EXE = 52
-# Add all keys in __all__
+try: from .util.keys import *
+except ImportError as e:
+  if "relative import" not in e.msg: 
+    raise
+  from util.keys import *
+# Add all keys in __all__, and delete ALL_KEYS because don't want that here
 __all__.extend([i for i in dir() if i.startswith("KEY_")])
+del ALL_KEYS
 
 
 ### Methods
@@ -136,8 +96,8 @@ class file:
 
 
 ### Cleanup
-if __Ion.OS_MODE:
-  if __Ion.OS_MODE < 3:
+if OS_MODE:
+  if OS_MODE < 3:
     del get_keys, battery, battery_level, battery_ischarging, set_brightness, get_brightness
     __all__.remove("battery")
     __all__.remove("battery_level")
@@ -145,5 +105,6 @@ if __Ion.OS_MODE:
     __all__.remove("set_brightness")
     __all__.remove("get_brightness")
 
-  if __Ion.OS_MODE == 1:
+  if OS_MODE == 1:
     del file
+del OS_MODE

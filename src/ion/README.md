@@ -49,9 +49,9 @@ Also i created the [Kandinsky module of Numworks](https://github.com/ZetaMap/Kan
 | Numworks key | Computer key | Field name           | Field value 
 |:-------------|:-------------|:---------------------|:------------
 | left         | Left         | KEY_LEFT             | 0
-| right        | Right        | KEY_RIGHT            | 1
+| up           | Up           | KEY_UP               | 1
 | down         | Down         | KEY_DOWN             | 2
-| up           | Up           | KEY_UP               | 3
+| right        | Right        | KEY_RIGHT            | 3
 | OK           | Insert       | KEY_OK               | 4
 | back         | Delete       | KEY_BACK             | 5
 | home         | Escape       | KEY_HOME             | 6
@@ -99,14 +99,23 @@ Also i created the [Kandinsky module of Numworks](https://github.com/ZetaMap/Kan
 #### Environ options
 **/!\\ You must make its additions *before* importing ion otherwise the changes will not take effect! /!\\**
 
-You can also change some default option of library. *(Options names are the same as Kandinsky library so that, if both libraries are present, they are synchronized)*<br> 
+You can also change some default option of library.<br> 
 To do this, first import the environ of os module like this: ``import os``.
 
-* Change starting OS (methods according to the selected os will be created):
+* Change starting OS (methods according to the selected os will be created): <br>
+*(Option name is same as Kandinsky so that, if both libraries are present, they are synchronized)*
 ```python
 # '0': All methods
 # '1': Numworks methods
 # '2': Omega method
 # '3': Upsilon methods
 os.environ['KANDINSKY_OS_MODE'] = '<number>'
+```
+
+* Disable reading input only in kandinsky window (if kandinsky is not imported globally, this option is enabled by default):
+```python
+# This options allow to read keyboard input in concole and kandinsky window
+# By default it just read kandinsky window (only if is focused)
+# Note: if is not imported globally, this option is enabled by default
+os.environ['ION_DISABLE_KANDINSKY_INPUT_ONLY'] = ''
 ```
