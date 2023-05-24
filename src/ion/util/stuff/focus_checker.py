@@ -172,7 +172,7 @@ else:
   # The 'focus on only window' will be disabled
   prettywarn(f"platform '{sys.platform}' not supported for inputs gets only in focussed window of python or kandinsky. "
               "Inputs will be gets on entire system", ImportWarning)
-
+     
   class FocusChecker:
     def __init__(self): ...
     def __call__(self): return True
