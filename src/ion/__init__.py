@@ -1,5 +1,5 @@
 """
-This is just a little low level library for fetching keyboard input. <br>
+This is just a little low level library for fetching keyboard input.
 This is a porting of the Numworks module, and add other methods created by others OS (like Omega or Upsilon).
 """
 
@@ -11,7 +11,8 @@ except ImportError as e:
 
 __name__ = "ion"
 __version__ = "2.0"
-try: __doc__ = open("README.md").read()
+try: 
+  with open("README.md") as f: __doc__ = f.read()
 except (FileNotFoundError, OSError): __doc__ = "<unknown>"
 __all__ = [
   "keydown",
@@ -21,18 +22,18 @@ __all__ = [
   "battery_ischarging",
   "set_brightness",
   "get_brightness",
+  "file", # idk what is this
 ]
 
 
 ### All keys of Numworks
-try: from .util.keys import *
+try: from .util.stuff.keys import *
 except ImportError as e:
   if "relative import" not in e.msg: 
     raise
-  from util.keys import *
-# Add all keys in __all__, and delete ALL_KEYS because don't want that here
+  from util.stuff.keys import *
+# Add all keys in __all__
 __all__.extend([i for i in dir() if i.startswith("KEY_")])
-del ALL_KEYS
 
 
 ### Methods
@@ -107,4 +108,5 @@ if OS_MODE:
 
   if OS_MODE == 1:
     del file
+    __all__.remove("file")
 del OS_MODE

@@ -49,10 +49,15 @@ KEY_EXE =              {'code': 52, 'name': 'EXE',       'key': Key.enter}
 
 # Put all keys in ALL_KEYS and redefine each key only by its code
 ALL_KEYS = []
+__all__ = []
+
 for n, k in locals().copy().items():
   # Avoid to re-replace variable if file is imported at multiple times
   if n.startswith("KEY_") and type(k) == dict: 
     k.update({'field': n})
-    locals()[k['field']] = k['code']
+    locals()[n] = k['code']
+    __all__.append(n)
     ALL_KEYS.append(k)
+
 NUMBER_OF_KEYS = len(ALL_KEYS)
+__all__ = [k['field'] for k in ALL_KEYS]

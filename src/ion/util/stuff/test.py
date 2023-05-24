@@ -5,9 +5,13 @@ from keys import ALL_KEYS, NUMBER_OF_KEYS
 # By default it just read kandinsky window (only if is focused)
 USE_KANDINSKY_INPUT_ONLY = 'ION_DISABLE_KANDINSKY_INPUT_ONLY' not in os.environ
 
-if os.name == "nt":
+if os.name == "nt": #TODO: /// change this after tests
   def GetFirstWindowFromThreadProcessId(pid, class_name=None, not_class_name=False):
     window = ctypes.c_uint()
+    if class_name:
+      if type(class_name) in (list, tuple): pass
+      elif type(class_name) == str: class_name = (class_name,)
+      else: raise TypeError("invalid type for class name")
     
     def foreach_window(hwnd, _):
       lpdw = ctypes.c_uint()
@@ -18,9 +22,9 @@ if os.name == "nt":
           buff = ctypes.create_unicode_buffer(256)
           ctypes.windll.user32.GetClassNameW(hwnd, buff)
           print(buff.value)
-          if not ((not_class_name and buff.value != class_name) or 
-                  (not not_class_name and buff.value == class_name)
-          ): return True
+          if not ((not_class_name and any([buff.value != name for name in class_name])) or
+                  (not not_class_name and any([buff.value == name for name in class_name]))): 
+            return True
              
         window.value = hwnd
         return False
@@ -77,19 +81,51 @@ if os.name == "nt":
     def __call__(self):
       if self.kandinsky_window_id == 0 and "kandinsky" in sys.modules: self.__init__()
       fgw = ctypes.windll.user32.GetForegroundWindow()
-      return ((self.python_window_id and fgw == self.python_window_id) or 
-              (self.kandinsky_window_id and fgw == self.kandinsky_window_id))
+      return (self.python_window_id and fgw == self.python_window_id) or \
+             (self.kandinsky_window_id and fgw == self.kandinsky_window_id)
 
 else:
+  try: import gi
+  except ImportError as e:
+    e.msg = "Missing dependency 'gi': please install it with command 'apt install python3-gi'"
+    raise
+  else: 
+    gi.require_version('Wnck', '3.0')
+    del gi
+  from gi.repository import Wnck
+  import Xlib
+
+  def GetFirstWindowFromThreadProcessId(pid, class_name=None, not_class_name=False):
+    windows = []
+    display = Xlib.display.Display()
+    screen = display.screen().root
+
+    for wid in screen.get_full_property(display.intern_atom('_NET_CLIENT_LIST'), Xlib.X.AnyPropertyType).value:
+      if pid == screen.get_full_property(display.intern_atom('_NET_WM_PID'), Xlib.X.AnyPropertyType, wid, 0, 1).value[0]:
+        windows.append(wid)
+
   class FocusChecker:
     kandinsky_window_id = 0
     python_window_id = 0
 
     def __init__(self):
-      ...
+      if self.kandinsky_window_id == 0 and "kandinsky" in sys.modules:
+        # To find kandinsky is more simple, no need to find parent processes with a valid window
+        # 'TkTopLevel' is the class name of root tkinter window
+        ...
+
+        if USE_KANDINSKY_INPUT_ONLY: 
+          self.python_window_id = 0
+          return
+        
+      if self.python_window_id == 0:
+        # Find python cosole window and ignore the top level of tkinter
+        ...
 
     def __call__(self):
+      # Verify is kandinsky is imported, for the first true test this will re-init the FocusChecker
       if self.kandinsky_window_id == 0 and "kandinsky" in sys.modules: self.__init__()
+      
       return False
 
 
@@ -146,35 +182,37 @@ class KeyLogger:
 
 
 #from Xlib import display
-import os, ctypes, win32gui, tkinter, threading, time
+import os, ctypes, tkinter, threading, time, Xlib
+try: import gi
+except ImportError as e:
+  e.msg = "Missing dependency 'gi': please install it with command 'apt install python3-gi'"
+  raise
 
 
-import ctypes
+def GetWindowsFromThreadProcessId(pid, class_name=None, not_class_name=False):
+  windows = []
+  display = Xlib.display.Display()
+  screen = display.screen().root
 
-def GetWindowsFromThreadProcessId(pid):
-    windows = []
-    def foreach_window(hwnd, _):
-        lpdw = ctypes.c_ulong()
-        ctypes.windll.user32.GetWindowThreadProcessId(hwnd, ctypes.byref(lpdw))
-        buff = ctypes.create_unicode_buffer(256)
-        ctypes.windll.user32.GetClassNameW(hwnd, buff)
-        
-        #if lpdw.value == pid: print(hwnd, lpdw.value, ctypes.windll.user32.IsWindowVisible(hwnd), buff.value)
-        if ctypes.windll.user32.IsWindowVisible(hwnd):
-            length = ctypes.windll.user32.GetWindowTextLengthW(hwnd)
-            buff = ctypes.create_unicode_buffer(length + 1)
-            ctypes.windll.user32.GetWindowTextW(hwnd, buff, length + 1)
-            windows.append([buff.value, hwnd, lpdw.value])
-        return True
-    ctypes.windll.user32.EnumWindows(ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_int, ctypes.c_int)(foreach_window), 0)
-    return windows
+  for window in screen.query_tree().children:
+    wpid = 0
+    for i in range(375):
+      if i in (0, 5, 375, 386): continue
+      k = window.get_property(i, Xlib.X.ParentRelative, 0, 0)
+      if k: 
+        print(window, pid, i, k)
+        wpid = k._data['sequence_number']
+    
+    if pid == wpid: windows.append(window.id)
+tt=threading.Thread(target=lambda: print(">>", tt.native_id, "<<") or tkinter.Tk().mainloop())
+tt.start()
 
-#threading.Thread(target=lambda: tkinter.Tk().mainloop()).start()
-
-time.sleep(2)
+display = Xlib.display.Display()
+screen = display.screen().root
+print(display.intern_atom('_NET_CLIENT_LIST'), display.intern_atom('_NET_WM_PID'))
 KeyLogger()
-time.sleep(2)
-import kandinsky
+
+#import kandinsky
 #o=tkinter.Tk()
 #buffer_ = ctypes.create_unicode_buffer(256)
 #ctypes.windll.kernel32.GetConsoleTitleW(buffer_, 256)

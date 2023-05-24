@@ -119,3 +119,8 @@ os.environ['KANDINSKY_OS_MODE'] = '<number>'
 # Note: if is not imported globally, this option is enabled by default
 os.environ['ION_DISABLE_KANDINSKY_INPUT_ONLY'] = ''
 ```
+
+* Get keyboard inputs everywhere (not only in kandinsky window or python console):
+```python
+os.environ['ION_ENABLE_GET_INPUT_EVERYWHERE'] = ''
+```

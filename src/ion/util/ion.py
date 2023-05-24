@@ -1,22 +1,27 @@
 from os import environ
 from random import randint, random
-from .keylogger import *
-from .keys import ALL_KEYS
+from .stuff.keylogger import *
+from .stuff.keys import ALL_KEYS
+from .stuff.common import prettywarn
 
 # '0': PC, '1': Numworks, '2': Omega, '3': Upsilon
 OS_MODE = environ.get('KANDINSKY_OS_MODE')
 OS_MODE = (int(OS_MODE) if 0 <= int(OS_MODE) < 4 else 1) if OS_MODE and OS_MODE.isdecimal() else 1
 del environ
-# By default it just read kandinsky window (only if is focused)
-USE_KANDINSKY_INPUT_ONLY = 'ION_DISABLE_KANDINSKY_INPUT_ONLY' not in environ
 
-# Start the key logger
-KeyLogger()
+# Check version of kandinsky to print an warning if is 'too old'
+import pkg_resources
+try:
+  if tuple([int(i) for i in pkg_resources.get_distribution("kandinsky").version.split('.') if i.isdecimal()]) < (2, 5):
+    prettywarn("for more stability, is recommended to upgrade Kandinsky", DeprecationWarning)
+except pkg_resources.DistributionNotFound: pass
+finally: del pkg_resources
 
 
 __all__ = ["Ion"]
 
 class Ion:
+  KeyLogger() # Start the key logger
   brightness = 240
 
   def keydown(k):
