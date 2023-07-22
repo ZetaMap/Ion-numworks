@@ -7,7 +7,6 @@ from .stuff.common import prettywarn
 # '0': PC, '1': Numworks, '2': Omega, '3': Upsilon
 OS_MODE = environ.get('KANDINSKY_OS_MODE')
 OS_MODE = (int(OS_MODE) if 0 <= int(OS_MODE) < 4 else 1) if OS_MODE and OS_MODE.isdecimal() else 1
-del environ
 
 # Check version of kandinsky to print an warning if is 'too old'
 import pkg_resources
@@ -15,7 +14,9 @@ try:
   if tuple([int(i) for i in pkg_resources.get_distribution("kandinsky").version.split('.') if i.isdecimal()]) < (2, 5):
     prettywarn("for more stability, is recommended to upgrade Kandinsky", DeprecationWarning)
 except pkg_resources.DistributionNotFound: pass
-finally: del pkg_resources
+
+# Cleanup
+del environ, pkg_resources
 
 
 __all__ = ["Ion"]

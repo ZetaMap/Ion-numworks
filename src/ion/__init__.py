@@ -13,6 +13,7 @@ __name__ = "ion"
 __version__ = "2.0"
 try: 
   with open("README.md") as f: __doc__ = f.read()
+  del f
 except (FileNotFoundError, OSError): __doc__ = "<unknown>"
 __all__ = [
   "keydown",

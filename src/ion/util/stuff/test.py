@@ -4,129 +4,66 @@ from keys import ALL_KEYS, NUMBER_OF_KEYS
 
 # By default it just read kandinsky window (only if is focused)
 USE_KANDINSKY_INPUT_ONLY = 'ION_DISABLE_KANDINSKY_INPUT_ONLY' not in os.environ
+# Option to get input everywhere on system
+GET_INPUT_EVERYWHERE = 'ION_ENABLE_GET_INPUT_EVERYWHERE' in os.environ
 
-if os.name != "nt": #TODO: /// change this after tests
-  def GetFirstWindowFromThreadProcessId(pid, class_name=None, not_class_name=False):
-    window = ctypes.c_uint()
-    if class_name:
-      if type(class_name) in (list, tuple): pass
-      elif type(class_name) == str: class_name = (class_name,)
-      else: raise TypeError("invalid type for class name")
+
+class IFocusChecker:
+  kandinsky_window_id = 0
+  kandinsky_not_found_error_printed = False
+  python_window_id = 0
+
+  def __init__(self):
+    if self.kandinsky_window_id == 0 and "kandinsky" in sys.modules:
+      # To find kandinsky is more simple, no need to find parent processes with a valid window
+      # 'TkTopLevel' is the class name of root tkinter window, 'pygame' because in old releases of kandinsky i used pygame
+      self.kandinsky_window_id = self.bind_kandinsky_window()
+
+      if self.kandinsky_window_id == 0 and not self.kandinsky_not_found_error_printed:
+        # Kandinsky window not found
+        print("could not find the kandinsky window to get inputs.", RuntimeWarning)
+        self.kandinsky_not_found_error_printed = True
+
+      if USE_KANDINSKY_INPUT_ONLY: 
+        self.python_window_id = 0
+        return
+
+    if self.python_window_id == 0:
+      # Find python cosole window and ignore the top level of tkinter
+      self.python_window_id = self.bind_python_console()
+
+  def __call__(self):
+    # Verify is kandinsky is imported, for the first true test (if no error) this will re-init FocusChecker
+    if self.kandinsky_window_id == 0 and "kandinsky" in sys.modules: self.__init__()
+    return ((self.python_window_id and self.check_console_focus()) or
+            (self.kandinsky_window_id and self.check_kandinsky_focus()))
+
+  def bind_kandinsky_window(self) -> int:
+    raise NotImplementedError
+  
+  def bind_python_console(self) -> int:
+    raise NotImplementedError
+  
+  def check_kandinsky_focus(self) -> bool:
+    raise NotImplementedError
     
-    def foreach_window(hwnd, _):
-      lpdw = ctypes.c_uint()
-      ctypes.windll.user32.GetWindowThreadProcessId(hwnd, ctypes.byref(lpdw))
-      
-      if lpdw.value == pid and ctypes.windll.user32.IsWindowVisible(hwnd):
-        if class_name:
-          buff = ctypes.create_unicode_buffer(256)
-          ctypes.windll.user32.GetClassNameW(hwnd, buff)
-          print(buff.value)
-          if not ((not_class_name and any([buff.value != name for name in class_name])) or
-                  (not not_class_name and any([buff.value == name for name in class_name]))): 
-            return True
-             
-        window.value = hwnd
-        return False
-      return True
+  def check_console_focus(self) -> bool:
+    raise NotImplementedError
+
+
+import Xlib
+class FocusChecker(IFocusChecker):
+  def bind_kandinsky_window(self):
+    ...
+
+  def bind_python_console(self):
+    ...
+
+  def check_kandinsky_focus(self):
+    ...
     
-    ctypes.windll.user32.EnumWindows(ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_uint, ctypes.c_uint)(foreach_window), 0)
-    return window.value
-
-  class FocusChecker:
-    kandinsky_window_id = 0
-    python_window_id = 0
-
-    def __init__(self):
-      if self.kandinsky_window_id == 0 and "kandinsky" in sys.modules:
-        #To find kandinsky is more simple, no need to find parent processes with a valid window
-        self.kandinsky_window_id = GetFirstWindowFromThreadProcessId(os.getpid(), "TkTopLevel")
-
-        if USE_KANDINSKY_INPUT_ONLY: 
-          self.python_window_id = 0
-          return
-
-
-      if self.python_window_id == 0:
-        # Find python cosole window
-        self.python_window_id = GetFirstWindowFromThreadProcessId(os.getpid(), "TkTopLevel", True)
-
-        if self.python_window_id == 0:
-          # Python probably started by another process, in this mode python don't have window or visible window
-          # So try going back in the parent processes until find a valid window
-          ppid = os.getppid()
-          for _ in range(20): # Loop limit to avoid infinite loop
-            self.python_window_id = GetFirstWindowFromThreadProcessId(ppid, "TkTopLevel", True)
-
-            # Found an valid window
-            if self.python_window_id: break
-
-            # Not found at this time, try with his ppid
-            from subprocess import check_output, CalledProcessError # need this because calling 'wmic' directly
-            try: result = [i for i in check_output(['wmic', 'process', 'where', f'ProcessId={ppid}', 'get', 'ParentProcessId']).decode().splitlines() if i.strip() != '']
-            except CalledProcessError: continue # Error happening, will try again in the next iteration
-
-            if len(result) == 1:
-              # No parent found, parent died or idk
-              print("RuntimeWarning: cannot find an valid window to get input from python console.")
-              break
-            else: ppid = int(result[1].strip())
-
-          else: 
-            # No valid parent window found!
-            # Python probably started in no-shell-mode and/or by a task
-            # So will not log python console input
-            print("RuntimeWarning: cannot find an valid window to get input from python console.")
-
-    def __call__(self):
-      if self.kandinsky_window_id == 0 and "kandinsky" in sys.modules: self.__init__()
-      fgw = ctypes.windll.user32.GetForegroundWindow()
-      return (self.python_window_id and fgw == self.python_window_id) or \
-             (self.kandinsky_window_id and fgw == self.kandinsky_window_id)
-
-else:
-  try: import gi
-  except ImportError as e:
-    e.msg = "Missing dependency 'gi': please install it with command 'apt install python3-gi'"
-    raise
-  else: 
-    gi.require_version('Wnck', '3.0')
-    del gi
-  from gi.repository import Wnck
-  import Xlib
-
-  def GetFirstWindowFromThreadProcessId(pid, class_name=None, not_class_name=False):
-    windows = []
-    display = Xlib.display.Display()
-    screen = display.screen().root
-
-    for wid in screen.get_full_property(display.intern_atom('_NET_CLIENT_LIST'), Xlib.X.AnyPropertyType).value:
-      if pid == screen.get_full_property(display.intern_atom('_NET_WM_PID'), Xlib.X.AnyPropertyType, wid, 0, 1).value[0]:
-        windows.append(wid)
-
-  class FocusChecker:
-    kandinsky_window_id = 0
-    python_window_id = 0
-
-    def __init__(self):
-      if self.kandinsky_window_id == 0 and "kandinsky" in sys.modules:
-        # To find kandinsky is more simple, no need to find parent processes with a valid window
-        # 'TkTopLevel' is the class name of root tkinter window
-        ...
-
-        if USE_KANDINSKY_INPUT_ONLY: 
-          self.python_window_id = 0
-          return
-        
-      if self.python_window_id == 0:
-        # Find python cosole window and ignore the top level of tkinter
-        ...
-
-    def __call__(self):
-      # Verify is kandinsky is imported, for the first true test this will re-init the FocusChecker
-      if self.kandinsky_window_id == 0 and "kandinsky" in sys.modules: self.__init__()
-      
-      return False
+  def check_console_focus(self):
+    ...
 
 
 class KeyLogger:
