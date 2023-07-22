@@ -5,7 +5,7 @@ from keys import ALL_KEYS, NUMBER_OF_KEYS
 # By default it just read kandinsky window (only if is focused)
 USE_KANDINSKY_INPUT_ONLY = 'ION_DISABLE_KANDINSKY_INPUT_ONLY' not in os.environ
 
-if os.name == "nt": #TODO: /// change this after tests
+if os.name != "nt": #TODO: /// change this after tests
   def GetFirstWindowFromThreadProcessId(pid, class_name=None, not_class_name=False):
     window = ctypes.c_uint()
     if class_name:
