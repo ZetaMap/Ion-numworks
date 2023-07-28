@@ -112,6 +112,12 @@ To do this, first import the environ of os module like this: ``import os``.
 os.environ['KANDINSKY_OS_MODE'] = '<number>'
 ```
 
+* Enable debug mode:
+```python
+# No debug message, so will just print the full stacktrace when an error occurs
+os.eviron['ION_ENABLE_DEBUG'] = ''
+```
+
 * Disable reading inputs only in kandinsky window (if kandinsky is not imported globally, this option is enabled by default):
 ```python
 # This options allow to read keyboard inputs in python console and kandinsky window

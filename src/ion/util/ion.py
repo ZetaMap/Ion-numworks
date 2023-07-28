@@ -4,6 +4,9 @@ from .stuff.keylogger import *
 from .stuff.keys import ALL_KEYS
 from .stuff.common import prettywarn
 
+# Enable debug, get the full stacktrace
+DEBUG = "ION_ENABLE_DEBUG" in environ
+
 # '0': PC, '1': Numworks, '2': Omega, '3': Upsilon
 OS_MODE = environ.get('KANDINSKY_OS_MODE')
 OS_MODE = (int(OS_MODE) if 0 <= int(OS_MODE) < 4 else 1) if OS_MODE and OS_MODE.isdecimal() else 1
@@ -44,4 +47,4 @@ class Ion:
   # Caller
   def call(method, *args, **kwargs):
     try: return method(*args, **kwargs), None
-    except BaseException as e: return None, e.with_traceback(None)
+    except BaseException as e: return None, e.with_traceback(e.__traceback__.tb_next if DEBUG else None)
