@@ -112,9 +112,9 @@ To do this, first import the environ of os module like this: ``import os``.
 os.environ['KANDINSKY_OS_MODE'] = '<number>'
 ```
 
-* Disable reading input only in kandinsky window (if kandinsky is not imported globally, this option is enabled by default):
+* Disable reading inputs only in kandinsky window (if kandinsky is not imported globally, this option is enabled by default):
 ```python
-# This options allow to read keyboard input in concole and kandinsky window
+# This options allow to read keyboard inputs in python console and kandinsky window
 # By default it just read kandinsky window (only if is focused)
 # Note: if is not imported globally, this option is enabled by default
 os.environ['ION_DISABLE_KANDINSKY_INPUT_ONLY'] = ''
@@ -122,5 +122,6 @@ os.environ['ION_DISABLE_KANDINSKY_INPUT_ONLY'] = ''
 
 * Get keyboard inputs everywhere (not only in kandinsky window or python console):
 ```python
+# Allow to get inputs in entire system, like previous version of library
 os.environ['ION_ENABLE_GET_INPUT_EVERYWHERE'] = ''
 ```

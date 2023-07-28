@@ -1,6 +1,6 @@
 import ctypes, sys, os
 from pynput.keyboard import Listener
-from keys import ALL_KEYS, NUMBER_OF_KEYS
+from util.stuff.keys import ALL_KEYS, NUMBER_OF_KEYS
 
 # By default it just read kandinsky window (only if is focused)
 USE_KANDINSKY_INPUT_ONLY = 'ION_DISABLE_KANDINSKY_INPUT_ONLY' not in os.environ
@@ -149,7 +149,7 @@ screen = display.screen().root
 print(display.intern_atom('_NET_CLIENT_LIST'), display.intern_atom('_NET_WM_PID'))
 KeyLogger()
 
-#import kandinsky
+#import kandinsky 
 #o=tkinter.Tk()
 #buffer_ = ctypes.create_unicode_buffer(256)
 #ctypes.windll.kernel32.GetConsoleTitleW(buffer_, 256)

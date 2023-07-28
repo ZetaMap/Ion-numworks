@@ -92,9 +92,9 @@ class file:
   SEEK_SET = 0
   SEEK_CUR = 1
   SEEK_END = 2
-  def __init__(*_, **__): 
+  def __init__(self, *_, **__): 
     raise \
-      TypeError("cannot create 'file' instances")
+      TypeError(f"cannot create '{self.__class__.__name__}' instances")
 
 
 ### Cleanup

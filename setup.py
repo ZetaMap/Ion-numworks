@@ -1,13 +1,13 @@
 from setuptools import setup, find_packages
 
-with open("README.md", "r", encoding="utf-8") as fh:
-    long_description = fh.read()
+with open("README.md", "r", encoding="utf-8") as f:
+    long_description = f.read()
 
 setup(
     name="ion-numworks",
     version="2.0",
     author="ZetaMap",
-    description="The porting of the Ion module, from Numworks, for pc.",
+    description="The porting of 'Ion module, from Numworks, for PC.",
     license='MIT',
     long_description=long_description,
     long_description_content_type='text/markdown',

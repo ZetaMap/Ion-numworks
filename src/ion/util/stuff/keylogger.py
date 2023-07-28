@@ -10,7 +10,7 @@ class KeyLogger:
 
   @staticmethod
   def __init__():
-    if KeyLogger._listener is not None: raise RuntimeError("KeyLogger already created")
+    if KeyLogger._listener: raise RuntimeError("KeyLogger already created")
 
     def on_press(key):
       if hasattr(key, "char"): key = key.char
@@ -45,10 +45,10 @@ class KeyLogger:
     return KeyLogger._focused and KeyLogger._keyboard_state[code]
 
   @staticmethod
-  def set_key(code, is_pressed):
+  def set_key(code, is_pressed, add=False):
     """Set state of a key with his keycode"""
 
     if KeyLogger._listener is None: raise RuntimeError("KeyLogger not created")
     elif type(code) != int: raise TypeError(f"keycode must be an integer, not {type(code).__name__}")
-    elif code not in KeyLogger._keyboard_state: raise IndexError(f"key with code '{code}' not found")
+    elif not add and code not in KeyLogger._keyboard_state: raise IndexError(f"key with code '{code}' not found")
     KeyLogger._keyboard_state[code] = bool(is_pressed)
