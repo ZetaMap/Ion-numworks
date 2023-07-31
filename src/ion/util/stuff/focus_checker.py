@@ -31,6 +31,12 @@ class IFocusChecker:
       # Find python cosole window and ignore the top level of tkinter
       self.python_window_id = self.bind_python_console()
 
+      if self.python_window_id == 0:
+        # No valid (parent) window found!
+        # Python probably started in no-shell-mode and/or by a task
+        # So will not log python console inputs
+        prettywarn("cannot find an valid window to get inputs from python console.", RuntimeWarning)
+
   def __call__(self):
     # Verify is kandinsky is imported, for the first true test (if no error) this will re-init FocusChecker
     if self.kandinsky_window_id == 0 and "kandinsky" in sys.modules: self.__init__()
@@ -117,16 +123,9 @@ elif sys.platform.startswith("win"):
 
           if len(result) == 1:
             # No parent found, parent died or idk
-            prettywarn("cannot find an valid window to get inputs from python console.", RuntimeWarning)
             del check_output, CalledProcessError
             break
           else: ppid = int(result[1].strip())
-
-        else: 
-          # No valid parent window found!
-          # Python probably started in no-shell-mode and/or by a task
-          # So will not log python console inputs
-          prettywarn("cannot find an valid window to get inputs from python console.", RuntimeWarning)
 
       return wid
     

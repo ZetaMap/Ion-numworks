@@ -1,3 +1,54 @@
+from pynput import keyboard
+import gi
+gi.require_version('Wnck', '3.0')
+from gi.repository import Wnck
+
+# Fonction pour obtenir la fenêtre en focus
+def get_focused_window():
+    screen = Wnck.Screen.get_default()
+    screen.force_update()  # Mettre à jour la liste des fenêtres
+    window = screen.get_active_window()
+    return window.get_name()
+
+# Callback pour la détection des touches pressées
+def on_press(key):
+    # Obtenir le nom de la fenêtre en focus
+    focused_window = get_focused_window()
+    print(key)
+    if focused_window:
+        print(f"Touches pressées dans la fenêtre : {focused_window}")
+    else:
+        print("Touches pressées dans une fenêtre sans nom")
+
+# Ecouteur pour les touches pressées
+with keyboard.Listener(on_press=on_press) as li:
+  li.join()
+exit()
+from pynput import keyboard
+from Xlib import X, display
+
+# Fonction pour obtenir le nom de la fenêtre en focus
+def get_focused_window_name():
+    d = display.Display()
+    root = d.screen().root
+    window_id = root.get_full_property(d.intern_atom('_NET_ACTIVE_WINDOW'), X.AnyPropertyType).value[0]
+    focused_window = d.create_resource_object('window', window_id)
+    window_name = focused_window.get_wm_name()
+    return window_name if window_name else "Fenêtre sans nom"
+
+# Callback pour la détection des touches pressées
+def on_press(key):
+    # Obtenir le nom de la fenêtre en focus
+    focused_window_name = get_focused_window_name()
+    print(f"Touches pressées dans la fenêtre : {focused_window_name}")
+
+# Ecouteur pour les touches pressées
+with keyboard.Listener(on_press=on_press) as listener:
+    listener.join()
+
+
+
+exit()
 import ctypes, sys, os
 from pynput.keyboard import Listener
 from util.stuff.keys import ALL_KEYS, NUMBER_OF_KEYS
