@@ -1,23 +1,17 @@
 from setuptools import setup
-import os
-
-def remove(path):
-  """
-  Remove a file or a directory recursively using terminal commands.
-  This way avoid some permissions errors.
-  """
-  if os.path.exists(path):
-    if os.name == "nt": os.system(("rd /s" if os.path.isdir(path) else "del /f") + " /q \"" + path.replace('/', '\\') + "\"")
-    else: os.system("rm -rf \"" + path.replace('\\', '/') + "\"")
 
 def clean_pycache(path="."):
-  """Clean __pycache__ directories before running setup()."""
+  """Clean __pycache__ directories recursively. Call this before setup()."""
+  import os
   for file in os.listdir(path):
     new_path = os.path.join(path, file)
     if os.path.isdir(new_path): 
-      if file == "__pycache__": remove(new_path)
+      if file == "__pycache__": 
+        # Remove a file or a directory recursively using terminal commands.
+        # This way avoid some permissions errors.
+        if os.name == "nt": os.system(("rd /s" if os.path.isdir(new_path) else "del /f") + " /q \"" + new_path.replace('/', '\\') + "\"")
+        else: os.system("rm -rf \"" + new_path.replace('\\', '/') + "\"")
       else: clean_pycache(new_path)
-
 
 with open("README.md", "r", encoding="utf-8") as f:
   long_description = f.read()
@@ -31,9 +25,9 @@ setup(
   license='MIT',
   long_description=long_description,
   long_description_content_type='text/markdown',
-  url="https://github.com/ZetaMap/Ion-numworks",
+  url="https://github.com/ZetaMap/Ion-Numworks",
   project_urls={
-    "Bug Tracker": "https://github.com/ZetaMap/Ion-numworks/issues",
+    "Bug Tracker": "https://github.com/ZetaMap/Ion-Numworks/issues",
   },
   classifiers=[
     'Programming Language :: Python :: 3',

@@ -40,8 +40,10 @@ class IFocusChecker:
   def __call__(self):
     # Verify is kandinsky is imported, for the first true test (if no error) this will re-init FocusChecker
     if self.kandinsky_window_id == 0 and "kandinsky" in sys.modules: self.__init__()
-    return ((self.python_window_id and self.check_console_focus()) or
-            (self.kandinsky_window_id and self.check_kandinsky_focus()))
+
+    focussed = self.get_focussed_window()
+    return ((self.python_window_id and focussed == self.python_window_id) or
+            (self.kandinsky_window_id and focussed == self.kandinsky_window_id))
 
   def bind_kandinsky_window(self) -> int:
     raise NotImplementedError
@@ -49,10 +51,7 @@ class IFocusChecker:
   def bind_python_console(self) -> int:
     raise NotImplementedError
   
-  def check_kandinsky_focus(self) -> bool:
-    raise NotImplementedError
-    
-  def check_console_focus(self) -> bool:
+  def get_focussed_window(self) -> int:
     raise NotImplementedError
 
 
@@ -129,12 +128,9 @@ elif sys.platform.startswith("win"):
 
       return wid
     
-    def check_console_focus(self):
-      return ctypes.windll.user32.GetForegroundWindow() == self.python_window_id
+    def get_focussed_window(self):
+      return ctypes.windll.user32.GetForegroundWindow()
     
-    def check_kandinsky_focus(self):
-      return ctypes.windll.user32.GetForegroundWindow() == self.kandinsky_window_id
-  
 
 elif sys.platform.startswith("linux"):
   import Xlib
@@ -146,10 +142,7 @@ elif sys.platform.startswith("linux"):
     def bind_python_console(self):
       ...
 
-    def check_kandinsky_focus(self):
-      ...
-      
-    def check_console_focus(self):
+    def get_focussed_window(self):
       ...
 
 
@@ -162,11 +155,9 @@ elif sys.platform.startswith("darwin"):
     def bind_python_console(self):
       ...
 
-    def check_kandinsky_focus(self):
+    def get_focussed_window(self):
       ...
-      
-    def check_console_focus(self):
-      ...
+
 
 else:
   # Platform not supported for focus, create an fake FocusChecker class
