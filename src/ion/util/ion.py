@@ -47,4 +47,4 @@ class Ion:
   # Caller
   def call(method, *args, **kwargs):
     try: return method(*args, **kwargs), None
-    except BaseException as e: return None, e.with_traceback(e.__traceback__.tb_next if DEBUG else None)
+    except BaseException as e: return None, Exception.with_traceback(e, e.__traceback__.tb_next if DEBUG else None)
