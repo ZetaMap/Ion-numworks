@@ -101,6 +101,7 @@ class file:
 if OS_MODE:
   if OS_MODE < 3:
     del get_keys, battery, battery_level, battery_ischarging, set_brightness, get_brightness
+    __all__.remove("get_keys")
     __all__.remove("battery")
     __all__.remove("battery_level")
     __all__.remove("battery_ischarging")

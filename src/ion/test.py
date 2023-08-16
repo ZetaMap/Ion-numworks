@@ -1,3 +1,11 @@
+from __init__ import *
+
+while 1:
+  k = keydown(KEY_EXE)
+  if k: print(k)
+
+
+exit()
 import pywinctl, pygame
 pygame.init()
 pygame.display.set_mode((400,400))

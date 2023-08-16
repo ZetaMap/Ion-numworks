@@ -1,5 +1,5 @@
 from .common import prettywarn
-import sys, os
+import sys, os, subprocess
 
 # By default it just read kandinsky window (only if is focused)
 USE_KANDINSKY_INPUT_ONLY = 'ION_DISABLE_KANDINSKY_INPUT_ONLY' not in os.environ
@@ -55,7 +55,8 @@ class IFocusChecker:
     raise NotImplementedError
 
 # Fake FocusChecker class, will always return True
-class NoopFocusChecker:
+class NoopFocusChecker(IFocusChecker):
+  def __init__(self): return
   def __call__(self): return True
 
 
@@ -72,8 +73,9 @@ elif sys.platform.startswith("win"):
       if type(classname) in (list, tuple): pass
       elif type(classname) == str: classname = (classname,)
       else: raise TypeError("invalid type for class name")
-    if contains_title and type(contains_title) != str: raise TypeError("invalid type for contains name")
-    contains_title = contains_title.lower()
+    if contains_title:
+      if type(contains_title) != str: raise TypeError("invalid type for contains name")
+      contains_title = contains_title.lower()
 
     def foreach_window(hwnd, _):
       lpdw = ctypes.c_uint()
@@ -107,22 +109,27 @@ elif sys.platform.startswith("win"):
       return GetFirstWindowFromThreadProcessId(os.getpid(), ("TkTopLevel", "pygame"), False, "kandinsky")
 
     def bind_python_console(self):
-      wid = GetFirstWindowFromThreadProcessId(os.getpid(), ("TkTopLevel", "pygame"), True)
+      # First, try to search the script name in title of window, for a more specific search
+      main_script = os.path.basename(sys.argv[0])
+
+      wid = GetFirstWindowFromThreadProcessId(os.getpid(), ("TkTopLevel", "pygame"), True, main_script)
+      if wid == 0: wid = GetFirstWindowFromThreadProcessId(os.getpid(), ("TkTopLevel", "pygame"), True)
 
       if wid == 0:
         # Python probably started by another process, in this mode, python don't have 'real' window
         # So try going back in the parent processes to find a valid window
         ppid = os.getppid()
         for _ in range(20): # Loop limit to avoid infinite loop
-          wid = GetFirstWindowFromThreadProcessId(ppid, ("TkTopLevel", "pygame"), True)
+          wid = GetFirstWindowFromThreadProcessId(ppid, ("TkTopLevel", "pygame"), True, main_script)
+          if wid == 0: wid = GetFirstWindowFromThreadProcessId(ppid, ("TkTopLevel", "pygame"), True)
 
           # Found an valid window
           if wid: break
 
           # Not found at this time, try with his ppid
-          from subprocess import check_output, CalledProcessError # need this because calling 'wmic' directly
-          try: result = [i.strip() for i in check_output(["wmic", "process", "where", f"ProcessId={ppid}", "get", "ParentProcessId"]).decode().splitlines() if i.strip() != '']
-          except CalledProcessError: continue # Error happening, will try again in the next iteration
+          # Use 'wmic' command to get ppid of process
+          try: result = [i.strip() for i in subprocess.check_output(f"wmic process where ProcessId={ppid} get ParentProcessId".split(' ')).decode().splitlines() if i.strip() != '']
+          except subprocess.CalledProcessError: continue # Error happening, will try again in the next iteration
 
           if len(result) == 1:
             # No parent found, parent died or idk
@@ -142,6 +149,20 @@ elif sys.platform.startswith("linux"):
     e.msg = "Xlib module not installed. Please install it with command 'pip install python-xlib'"
     raise
 
+  # Check graphical server type
+  try: graphical_server_type = subprocess.check_output("loginctl show-session $(awk '/'$(whoami)'/ {print $1}' <(loginctl)) -p Type | awk -F= '{print $2}'".split(' ')).decode().strip()
+  except subprocess.CalledProcessError:
+    # Fall baack to x11 support
+    graphical_server_type = "x11"
+    prettywarn("failed to get graphical server type, falling back to x11 support", RuntimeWarning)
+  else:
+    # x11 or wayland, or... other? can be?
+    if graphical_server_type not in ("x11", "wayland"):
+      prettywarn(f"graphical server {graphical_server_type!r} not supported, falling back to x11 support", RuntimeWarning)
+  
+  # TODO: complete support of wayland
+  is_wayland = graphical_server_type == "wayland"
+
   def get_wm_pid(window):
     p = window.get_full_property(window.display.get_atom('_NET_WM_PID'), Xlib.X.AnyPropertyType)
     if p is None: return None
@@ -154,8 +175,9 @@ elif sys.platform.startswith("linux"):
       if type(classname) in (list, tuple): pass
       elif type(classname) == str: classname = (classname,)
       else: raise TypeError("invalid type for classname")
-    if contains_title and type(contains_title) != str: raise TypeError("invalid type for contains_title")
-    contains_title = contains_title.lower()
+    if contains_title:
+      if type(contains_title) != str: raise TypeError("invalid type for contains_title")
+      contains_title = contains_title.lower()
 
     wins = [display.screen().root] # should loop over all screens
 
@@ -197,12 +219,36 @@ elif sys.platform.startswith("linux"):
       wid = search_window(os.getpid(), ("Tk", os.path.basename(sys.argv[0])), False, "kandinsky")
       # In some linux distributions Tkinter do not set window property '_NET_WM_PID'
       # So try to find the window with a less reliable method
+      # EDIT: is in all linux distributions
       if not wid: wid = search_window(0, "Tk", False, "kandinsky")
       return wid
 
     def bind_python_console(self):
+      # First, try to search the script name in title of window, for a more specific search
+      main_script = os.path.basename(sys.argv[0])
 
-      return 0
+      wid = search_window(self.display, os.getpid(), ("Tk", main_script), True, main_script)
+      if wid == 0: wid = search_window(self.display, os.getpid(), ("Tk", main_script), True)
+
+      if wid == 0:
+        # Python probably started by another process, in this mode, python don't have 'real' window
+        # So try going back in the parent processes to find a valid window
+        ppid = os.getppid()
+        for _ in range(20): # Loop limit to avoid infinite loop
+          wid = search_window(self.display, ppid, ("Tk", main_script), True, main_script)
+          if wid == 0: wid = search_window(self.display, ppid, ("Tk", main_script), True)
+
+          # Found an valid window
+          if wid: break
+
+          # Not found at this time, try with his ppid
+          try: result = subprocess.check_output(f"ps -o ppid= {ppid}".split(' ')).decode().strip()
+          except subprocess.CalledProcessError: continue # Error happening, will try again in the next iteration
+
+          if not result: break
+          else: ppid = int(result[1].strip())
+
+      return wid
 
     def get_focussed_window(self):
       return self.display.screen().root.get_full_property(self.display.get_atom('_NET_ACTIVE_WINDOW'), 0).value[0]
