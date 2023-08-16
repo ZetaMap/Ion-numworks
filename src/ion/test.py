@@ -1,46 +1,124 @@
-from pynput import keyboard
-import gi
-gi.require_version('Wnck', '3.0')
-from gi.repository import Wnck
+import pywinctl, pygame
+pygame.init()
+pygame.display.set_mode((400,400))
+pygame.display.flip()
+for i in pywinctl.getAllWindows():
+  print(i, i._hWnd)
 
-# Fonction pour obtenir la fenêtre en focus
-def get_focused_window():
-    screen = Wnck.Screen.get_default()
-    screen.force_update()  # Mettre à jour la liste des fenêtres
-    window = screen.get_active_window()
-    return window.get_name()
-
-# Callback pour la détection des touches pressées
-def on_press(key):
-    # Obtenir le nom de la fenêtre en focus
-    focused_window = get_focused_window()
-    print(key)
-    if focused_window:
-        print(f"Touches pressées dans la fenêtre : {focused_window}")
-    else:
-        print("Touches pressées dans une fenêtre sans nom")
-
-# Ecouteur pour les touches pressées
-with keyboard.Listener(on_press=on_press) as li:
-  li.join()
 exit()
+
+import ctypes, os
+
+
+def GetFirstWindowFromThreadProcessId(pid, classname=None, not_classname=False, contains_title=None):
+  if classname:
+    if type(classname) in (list, tuple): pass
+    elif type(classname) == str: classname = (classname,)
+    else: raise TypeError("invalid type for class name")
+  if contains_title and type(contains_title) != str: raise TypeError("invalid type for contains name")
+  contains_title = contains_title.lower()
+  
+  def foreach_window(hwnd, _):
+    lpdw = ctypes.c_uint()
+    ctypes.windll.user32.GetWindowThreadProcessId(hwnd, ctypes.byref(lpdw))       
+    buff = ctypes.create_unicode_buffer(256)
+    ctypes.windll.user32.GetWindowTextW(hwnd, buff, 256)
+
+    print(contains_title, [buff.value], lpdw.value)
+
+    if lpdw.value == pid and ctypes.windll.user32.IsWindowVisible(hwnd):
+      print(lpdw)
+      if classname:
+        buff = ctypes.create_unicode_buffer(256)
+        ctypes.windll.user32.GetClassNameW(hwnd, buff)
+
+        if not ((not_classname and any([buff.value != name for name in classname])) or
+                (not not_classname and any([buff.value == name for name in classname]))): 
+          return True
+      
+      if contains_title:
+        buff = ctypes.create_unicode_buffer(256)
+        ctypes.windll.user32.GetWindowTextW(hwnd, buff, 256)
+
+        if contains_title not in buff.value.lower(): return True
+            
+      window.value = hwnd
+      return False
+    return True
+  
+  window = ctypes.c_uint(0)
+  ctypes.windll.user32.EnumWindows(ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_uint, ctypes.c_uint)(foreach_window), 0)
+  return window.value
+
+
+buff = ctypes.create_unicode_buffer(256)
+ctypes.windll.kernel32.GetConsoleTitleW(buff, 256)
+print(buff.value)
+print(GetFirstWindowFromThreadProcessId(os.getpid(), contains_title=buff.value))
+cwid = ctypes.windll.kernel32.GetConsoleWindow()
+lpdw = ctypes.c_uint()
+ctypes.windll.user32.GetWindowThreadProcessId(cwid, ctypes.byref(lpdw))  
+print("console wid", cwid, ctypes.windll.user32.IsWindowVisible(cwid), lpdw.value)
+exit()
+
 from pynput import keyboard
 from Xlib import X, display
+from os import getpid
 
+def get_window_by_pid(pid, classname=None, not_classname=False, contains_title=None):
+    d = display.Display()
+    root = d.screen().root # should loop over all screens
+    wins = [root]
+
+    while len(wins) != 0:
+        win = wins.pop(0)
+        wpid = win.get_full_property(d.get_atom('_NET_WM_PID'), X.AnyPropertyType)
+        
+        if wpid and pid == wpid.value[0] and win.get_attributes().map_state == X.IsViewable:  
+          found = True
+
+          if found and classname:
+            wclass = win.get_full_property(d.get_atom('WM_CLASS'), X.AnyPropertyType)
+            if wclass:
+              wclass = wclass.value.decode("utf-8").split('\0')[1]
+              if not ((not_classname and any([wclass != name for name in classname])) or
+                      (not not_classname and any([wclass == name for name in classname]))): 
+                found = False
+            else: found = False
+
+          if found and contains_title:
+            wtitle = win.get_full_property(d.get_atom('_NET_WM_NAME'), X.AnyPropertyType)
+            if not wtitle or contains_title not in wtitle.value.decode("utf-8").lower(): found = False
+
+          if found: return win.id
+        
+        subwins = win.query_tree().children
+        if subwins != None: wins += subwins
+
+    return 0
+
+import tkinter
+tk = tkinter.Tk()
+tk.eval('tk::PlaceWindow . center')
+tk.update()
+tk.update_idletasks()
+get_window_by_pid(getpid())
+exit()
 # Fonction pour obtenir le nom de la fenêtre en focus
 def get_focused_window_name():
     d = display.Display()
-    root = d.screen().root
-    window_id = root.get_full_property(d.intern_atom('_NET_ACTIVE_WINDOW'), X.AnyPropertyType).value[0]
-    focused_window = d.create_resource_object('window', window_id)
-    window_name = focused_window.get_wm_name()
-    return window_name if window_name else "Fenêtre sans nom"
+    wid = d.screen().root.get_full_property(d.get_atom('_NET_ACTIVE_WINDOW'), X.AnyPropertyType).value[0]
+    win = d.create_resource_object('window', wid)
+    return win.get_full_property(
+      d.get_atom('_NET_WM_PID'), X.AnyPropertyType), wid
 
 # Callback pour la détection des touches pressées
 def on_press(key):
     # Obtenir le nom de la fenêtre en focus
     focused_window_name = get_focused_window_name()
     print(f"Touches pressées dans la fenêtre : {focused_window_name}")
+
+print(get_focused_window_name())
 
 # Ecouteur pour les touches pressées
 with keyboard.Listener(on_press=on_press) as listener:

@@ -23,7 +23,7 @@ class IFocusChecker:
         prettywarn("could not find the kandinsky window to get inputs.", RuntimeWarning)
         self.kandinsky_not_found_error_printed = True
 
-      if USE_KANDINSKY_INPUT_ONLY: 
+      if USE_KANDINSKY_INPUT_ONLY:
         self.python_window_id = 0
         return
 
@@ -45,63 +45,67 @@ class IFocusChecker:
     return ((self.python_window_id and focussed == self.python_window_id) or
             (self.kandinsky_window_id and focussed == self.kandinsky_window_id))
 
-  def bind_kandinsky_window(self) -> int:
+  def bind_kandinsky_window(self):
     raise NotImplementedError
-  
-  def bind_python_console(self) -> int:
+
+  def bind_python_console(self):
     raise NotImplementedError
-  
-  def get_focussed_window(self) -> int:
+
+  def get_focussed_window(self):
     raise NotImplementedError
+
+# Fake FocusChecker class, will always return True
+class NoopFocusChecker:
+  def __call__(self): return True
+
 
 
 if GET_INPUT_EVERYWHERE:
-  # Fake FocusChecker class, will always return True
-  class FocusChecker:
-    def __call__(self): return True
+  FocusChecker = NoopFocusChecker
 
 
 elif sys.platform.startswith("win"):
   import ctypes
 
-  def GetFirstWindowFromThreadProcessId(pid, class_name=None, not_class_name=False, contains_name=None):
-    window = ctypes.c_uint(0)
-    if class_name:
-      if type(class_name) in (list, tuple): pass
-      elif type(class_name) == str: class_name = (class_name,)
+  def GetFirstWindowFromThreadProcessId(pid, classname=None, not_classname=False, contains_title=None):
+    if classname:
+      if type(classname) in (list, tuple): pass
+      elif type(classname) == str: classname = (classname,)
       else: raise TypeError("invalid type for class name")
-    if contains_name and type(contains_name) != str: raise TypeError("invalid type for contains name")
-    
+    if contains_title and type(contains_title) != str: raise TypeError("invalid type for contains name")
+    contains_title = contains_title.lower()
+
     def foreach_window(hwnd, _):
       lpdw = ctypes.c_uint()
       ctypes.windll.user32.GetWindowThreadProcessId(hwnd, ctypes.byref(lpdw))
-      
+
       if lpdw.value == pid and ctypes.windll.user32.IsWindowVisible(hwnd):
-        if class_name:
+        if classname:
           buff = ctypes.create_unicode_buffer(256)
           ctypes.windll.user32.GetClassNameW(hwnd, buff)
- 
-          if not ((not_class_name and any([buff.value != name for name in class_name])) or
-                  (not not_class_name and any([buff.value == name for name in class_name]))): 
+
+          if not ((not_classname and any([buff.value != name for name in classname])) or
+                  (not not_classname and any([buff.value == name for name in classname]))):
             return True
-        
-        if contains_name:
+
+        if contains_title:
           buff = ctypes.create_unicode_buffer(256)
           ctypes.windll.user32.GetWindowTextW(hwnd, buff, 256)
 
-          if contains_name.lower() not in buff.value.lower(): return True
-             
+          if contains_title not in buff.value.lower(): return True
+
         window.value = hwnd
         return False
       return True
-    
+
+    window = ctypes.c_uint(0)
     ctypes.windll.user32.EnumWindows(ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_uint, ctypes.c_uint)(foreach_window), 0)
     return window.value
 
   class FocusChecker(IFocusChecker):
     def bind_kandinsky_window(self):
       return GetFirstWindowFromThreadProcessId(os.getpid(), ("TkTopLevel", "pygame"), False, "kandinsky")
-    
+
     def bind_python_console(self):
       wid = GetFirstWindowFromThreadProcessId(os.getpid(), ("TkTopLevel", "pygame"), True)
 
@@ -127,23 +131,81 @@ elif sys.platform.startswith("win"):
           else: ppid = int(result[1].strip())
 
       return wid
-    
+
     def get_focussed_window(self):
       return ctypes.windll.user32.GetForegroundWindow()
-    
+
 
 elif sys.platform.startswith("linux"):
-  import Xlib
+  try: import Xlib
+  except ImportError as e:
+    e.msg = "Xlib module not installed. Please install it with command 'pip install python-xlib'"
+    raise
+
+  def get_wm_pid(window):
+    p = window.get_full_property(window.display.get_atom('_NET_WM_PID'), Xlib.X.AnyPropertyType)
+    if p is None: return None
+    return p.value[0]
+
+  def search_window(display, pid=0, classname=None, not_classname=False, contains_title=None):
+    if type(pid) != int or pid < 0: raise ValueError("invalid pid")
+    if not pid and not classname and not contains_title: raise ValueError("pid, classname or contains_title must be specified")
+    if classname:
+      if type(classname) in (list, tuple): pass
+      elif type(classname) == str: classname = (classname,)
+      else: raise TypeError("invalid type for classname")
+    if contains_title and type(contains_title) != str: raise TypeError("invalid type for contains_title")
+    contains_title = contains_title.lower()
+
+    wins = [display.screen().root] # should loop over all screens
+
+    while len(wins) != 0:
+        win = wins.pop(0)
+        wpid = get_wm_pid(win)
+
+        if (True if pid == 0 else (wpid and pid == wpid)) and win.get_attributes().map_state == Xlib.X.IsViewable:
+          found = True
+
+          if found and classname:
+            wclass = win.get_wm_class()
+            if not wclass or not ((not_classname and any([wclass[1] != name for name in classname])) or
+                      (not not_classname and any([wclass[1] == name for name in classname]))):
+                found = False
+
+          if found and contains_title:
+            wtitle = win.get_wm_name()
+            if not wtitle or contains_title not in wtitle.lower(): found = False
+
+          if found: return win.id
+
+        subwins = win.query_tree().children
+        if subwins != None: wins += subwins
+
+    return 0
+
 
   class FocusChecker(IFocusChecker):
+    def __init__(self):
+      self.display = Xlib.display.Display()
+      super().__init__()
+
+    def __del__(self):
+      self.display.close()
+
     def bind_kandinsky_window(self):
-      ...
-  
+      # Use sys.argv[0] because the window classname of pygame if file name of script
+      wid = search_window(os.getpid(), ("Tk", os.path.basename(sys.argv[0])), False, "kandinsky")
+      # In some linux distributions Tkinter do not set window property '_NET_WM_PID'
+      # So try to find the window with a less reliable method
+      if not wid: wid = search_window(0, "Tk", False, "kandinsky")
+      return wid
+
     def bind_python_console(self):
-      ...
+
+      return 0
 
     def get_focussed_window(self):
-      ...
+      return self.display.screen().root.get_full_property(self.display.get_atom('_NET_ACTIVE_WINDOW'), 0).value[0]
 
 
 elif sys.platform.startswith("darwin"):
@@ -151,7 +213,7 @@ elif sys.platform.startswith("darwin"):
   class FocusChecker(IFocusChecker):
     def bind_kandinsky_window(self):
       ...
-  
+
     def bind_python_console(self):
       ...
 
@@ -164,6 +226,4 @@ else:
   # The 'focus on only window' will be disabled
   prettywarn(f"platform '{sys.platform}' not supported for inputs only in focussed window. "
               "Inputs will be gets on entire system", ImportWarning)
-
-  class FocusChecker:
-    def __call__(self): return True
+  FocusChecker = NoopFocusChecker

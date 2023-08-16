@@ -52,7 +52,7 @@ ALL_KEYS = []
 
 for n, k in locals().copy().items():
   # Avoid to re-replace variable if file is imported at multiple times
-  if n.startswith("KEY_") and type(k) == dict: 
+  if n.startswith("KEY_") and type(k) == dict:
     k.update({'field': n})
     locals()[n] = k['code']
     ALL_KEYS.append(k)

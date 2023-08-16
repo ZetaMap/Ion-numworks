@@ -5,13 +5,13 @@ This is a porting of the Numworks module, and add other methods created by other
 
 try: from .util.ion import Ion as __Ion, OS_MODE
 except ImportError as e:
-  if "relative import" not in e.msg: 
+  if "relative import" not in e.msg:
     raise
   from util.ion import Ion as __Ion, OS_MODE
 
 __name__ = "ion"
 __version__ = "2.0"
-try: 
+try:
   with open("README.md") as f: __doc__ = f.read()
   del f
 except (FileNotFoundError, OSError): __doc__ = "<unknown>"
@@ -30,7 +30,7 @@ __all__ = [
 ### All keys of Numworks
 try: from .util.stuff.keys import *
 except ImportError as e:
-  if "relative import" not in e.msg: 
+  if "relative import" not in e.msg:
     raise
   from util.stuff.keys import *
 # Add all keys in __all__
@@ -92,7 +92,7 @@ class file:
   SEEK_SET = 0
   SEEK_CUR = 1
   SEEK_END = 2
-  def __init__(self, *_, **__): 
+  def __init__(self, *_, **__):
     raise \
       TypeError(f"cannot create '{self.__class__.__name__}' instances")
 
