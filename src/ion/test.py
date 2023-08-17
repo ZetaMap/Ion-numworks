@@ -1,6 +1,7 @@
 import os
 os.environ['KANDINSKY_OS_MODE'] = '3'
 from __init__ import *
+from kandinsky import *
 
 while 1:
   k = get_keys()
