@@ -154,19 +154,19 @@ elif sys.platform.startswith("linux"):
   try: graphical_server_type = subprocess.check_output("loginctl show-session $(loginctl | awk '/'$(whoami)'/ {print $1}') -p Type | awk -F = '{print $2}'", shell=True, stderr=subprocess.STDOUT).decode().strip()
   except subprocess.CalledProcessError as e:
     if "not been booted" in e.stdout.decode().strip(): # propably a non graphical system or no login manager
-      prettywarn("no graphical server instance detected, falling back to x11 support", RuntimeWarning)   
+      prettywarn("no graphical server instance detected, falling back to x11 support", RuntimeWarning)
     else: prettywarn("failed to get graphical server type, falling back to x11 support", RuntimeWarning)
     # Fall baack to x11 support
     graphical_server_type = "x11"
   else:
     if "not been booted" in graphical_server_type:
-      prettywarn("no graphical server instance detected, falling back to x11 support", RuntimeWarning)   
+      prettywarn("no graphical server instance detected, falling back to x11 support", RuntimeWarning)
       graphical_server_type = "x11"
 
     # x11 or wayland, or... other? can be?
     if graphical_server_type not in ("x11", "wayland"):
       prettywarn(f"graphical server {graphical_server_type!r} not supported, falling back to x11 support", RuntimeWarning)
-  
+
   # TODO: complete support of wayland
   is_wayland = graphical_server_type == "wayland"
 
