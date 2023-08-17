@@ -150,11 +150,13 @@ elif sys.platform.startswith("linux"):
     raise
 
   # Check graphical server type
-  try: graphical_server_type = subprocess.check_output("loginctl show-session $(awk '/'$(whoami)'/ {print $1}' <(loginctl)) -p Type | awk -F= '{print $2}'".split(' ')).decode().strip()
-  except subprocess.CalledProcessError:
+  try: graphical_server_type = subprocess.check_output("loginctl show-session $(awk '/'$(whoami)'/ {print $1}' <(loginctl)) -p Type | awk -F = '{print $2}'".split(' '), stderr=subprocess.STDOUT).decode().strip()
+  except subprocess.CalledProcessError as e:
+    if "not been booted" in e.stderr.decode().strip(): # propably a non graphical system or no login manager
+      prettywarn("no graphical server instance detected, falling back to x11 support", RuntimeWarning)   
+    else: prettywarn("failed to get graphical server type, falling back to x11 support", RuntimeWarning)
     # Fall baack to x11 support
     graphical_server_type = "x11"
-    prettywarn("failed to get graphical server type, falling back to x11 support", RuntimeWarning)
   else:
     # x11 or wayland, or... other? can be?
     if graphical_server_type not in ("x11", "wayland"):
@@ -216,14 +218,20 @@ elif sys.platform.startswith("linux"):
 
     def bind_kandinsky_window(self):
       # Use sys.argv[0] because the window classname of pygame if file name of script
-      wid = search_window(os.getpid(), ("Tk", os.path.basename(sys.argv[0])), False, "kandinsky")
+      wid = search_window(self.display, os.getpid(), ("Tk", os.path.basename(sys.argv[0])), False, "kandinsky")
       # In some linux distributions Tkinter do not set window property '_NET_WM_PID'
       # So try to find the window with a less reliable method
       # EDIT: is in all linux distributions
-      if not wid: wid = search_window(0, "Tk", False, "kandinsky")
+      if not wid: wid = search_window(self.display, 0, "Tk", False, "kandinsky")
       return wid
 
     def bind_python_console(self):
+      # Check if is wayland because we cannot locate all windows due to security reasons
+      if is_wayland:
+        prettywarn("Wayland (used by GNOME/Ubuntu or KDE) is not fully supported. "
+                   "The python console window will probably not be localized correctly. "
+                   "To avoid this problem, start your session in X11 mode.", UserWarning)
+
       # First, try to search the script name in title of window, for a more specific search
       main_script = os.path.basename(sys.argv[0])
 
@@ -246,7 +254,7 @@ elif sys.platform.startswith("linux"):
           except subprocess.CalledProcessError: continue # Error happening, will try again in the next iteration
 
           if not result: break
-          else: ppid = int(result[1].strip())
+          else: ppid = int(result)
 
       return wid
 

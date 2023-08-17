@@ -1,7 +1,9 @@
+import os
+os.environ['KANDINSKY_OS_MODE'] = '3'
 from __init__ import *
 
 while 1:
-  k = keydown(KEY_EXE)
+  k = get_keys()
   if k: print(k)
 
 
