@@ -148,6 +148,7 @@ elif sys.platform.startswith("linux"):
   except ImportError as e:
     e.msg = "Xlib module not installed. Please install it with command 'pip install python-xlib'"
     raise
+  import atexit, warnings
 
   # Check graphical server type
   try: graphical_server_type = subprocess.check_output("loginctl show-session $(loginctl | awk '/'$(whoami)'/ {print $1}') -p Type | awk -F = '{print $2}'", shell=True, stderr=subprocess.STDOUT).decode().strip()
@@ -219,7 +220,6 @@ elif sys.platform.startswith("linux"):
     def __init__(self):
       self.display = Xlib.display.Display()
       # Close the socket when script is finished
-      import atexit
       atexit.register(lambda: self.display.display.close_internal("client"))
       super().__init__()
 
@@ -272,6 +272,8 @@ elif sys.platform.startswith("linux"):
       return wid
 
     def get_focussed_window(self):
+      # remove the resource warning
+      if ("ignore", None, ResourceWarning, None, 0) not in warnings.filters: warnings.simplefilter("ignore", ResourceWarning)
       return self.display.screen().root.get_full_property(self.display.get_atom('_NET_ACTIVE_WINDOW'), 0).value[0]
 
 
