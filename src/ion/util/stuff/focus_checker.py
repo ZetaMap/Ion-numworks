@@ -250,8 +250,8 @@ elif sys.platform.startswith("linux"):
           wid = search_window(self.display, ppid, ("Tk", main_script), True, main_script)
           if wid == 0: wid = search_window(self.display, ppid, ("Tk", main_script), True)
 
-          # Found an valid window or no valid parent found
-          if wid or not ppid: break
+          # Found an valid window
+          if wid: break
 
           # Not found at this time, try with his ppid
           try: result = subprocess.check_output(f"ps -o ppid= {ppid}".split(' ')).decode().strip()
@@ -259,6 +259,7 @@ elif sys.platform.startswith("linux"):
 
           if not result: break
           else: ppid = int(result)
+          if not ppid: break
 
       return wid
 
