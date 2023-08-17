@@ -189,22 +189,25 @@ elif sys.platform.startswith("linux"):
 
     while len(wins) != 0:
         win = wins.pop(0)
-        wpid = get_wm_pid(win)
+        try:
+          wpid = get_wm_pid(win)
 
-        if (True if pid == 0 else (wpid and pid == wpid)) and win.get_attributes().map_state == Xlib.X.IsViewable:
-          found = True
+          if (True if pid == 0 else (wpid and pid == wpid)) and win.get_attributes().map_state == Xlib.X.IsViewable:
+            found = True
 
-          if found and classname:
-            wclass = win.get_wm_class()
-            if not wclass or not ((not_classname and any([wclass[1] != name for name in classname])) or
-                      (not not_classname and any([wclass[1] == name for name in classname]))):
+            if found and classname:
+              wclass = win.get_wm_class()
+              if not wclass or not ((not_classname and any([wclass[1] != name for name in classname])) or
+                  (not not_classname and any([wclass[1] == name for name in classname]))):
                 found = False
 
-          if found and contains_title:
-            wtitle = win.get_wm_name()
-            if not wtitle or contains_title not in wtitle.lower(): found = False
+            if found and contains_title:
+              wtitle = win.get_wm_name()
+              if not wtitle or contains_title not in wtitle.lower(): found = False
 
-          if found: return win.id
+            if found: return win.id
+
+        except Xlib.error.BadWindow: pass # catch the case of a not valid window
 
         subwins = win.query_tree().children
         if subwins != None: wins += subwins
@@ -215,10 +218,15 @@ elif sys.platform.startswith("linux"):
   class FocusChecker(IFocusChecker):
     def __init__(self):
       self.display = Xlib.display.Display()
+      # Close the socket when script is finished
+      import atexit
+      atexit.register(lambda: self.display.display.close_internal("client"))
       super().__init__()
 
     def __del__(self):
-      self.display.close()
+      try: self.display.close()
+      except Xlib.error.ConnectionClosedError: pass # already closed
+    __exit__ = __del__
 
     def bind_kandinsky_window(self):
       # Use sys.argv[0] because the window classname of pygame if file name of script
