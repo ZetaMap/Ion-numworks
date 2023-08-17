@@ -208,7 +208,7 @@ elif sys.platform.startswith("linux"):
 
             if found: return win.id
 
-        except Xlib.error.BadWindow: pass # catch the case of a not valid window
+        except Xlib.error.BadWindow: pass # catch the case of a not valid window (sometimes apear on Wayland)
 
         subwins = win.query_tree().children
         if subwins != None: wins += subwins
