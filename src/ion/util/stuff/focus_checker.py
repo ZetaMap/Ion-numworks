@@ -239,7 +239,7 @@ elif sys.platform.startswith("linux"):
 
     def bind_python_console(self):
       # Check if is wayland because we cannot locate all windows due to security reasons
-      if is_wayland:
+      if is_wayland and not self.kandinsky_not_found_error_printed:
         prettywarn("Wayland (used by GNOME/Ubuntu or KDE) is not fully supported. "
                    "The python console window will probably not be localized correctly. "
                    "To avoid this problem, start your session in X11 mode.", UserWarning)
