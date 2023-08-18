@@ -204,14 +204,18 @@ elif sys.platform.startswith("linux"):
 
             if found and contains_title:
               wtitle = win.get_wm_name()
+              # check the value because some window return an empty title with this method
+              if wtitle == b'': 
+                wtitle = win.get_full_property(display.get_atom('_NET_WM_NAME'), Xlib.X.AnyPropertyType)
+                if wtitle: wtitle = wtitle.value.decode()
               if not wtitle or contains_title not in wtitle.lower(): found = False
 
             if found: return win.id
 
-        except Xlib.error.BadWindow: pass # catch the case of a not valid window (sometimes apear on Wayland)
-
-        subwins = win.query_tree().children
-        if subwins != None: wins += subwins
+          subwins = win.query_tree().children
+          if subwins != None: wins += subwins
+        except (Xlib.error.BadWindow, TypeError): pass # catch the case of a not valid window or invalid reply
+        except Xlib.error.ConnectionClosedError: break # connection closed, no need to continue to search the window
 
     return 0
 
@@ -274,10 +278,11 @@ elif sys.platform.startswith("linux"):
     def get_focussed_window(self):
       # remove the resource warning
       if ("ignore", None, ResourceWarning, None, 0) not in warnings.filters: warnings.simplefilter("ignore", ResourceWarning)
-      return self.display.screen().root.get_full_property(self.display.get_atom('_NET_ACTIVE_WINDOW'), 0).value[0]
+      return self.display.screen().root.get_full_property(self.display.get_atom('_NET_ACTIVE_WINDOW'), Xlib.X.AnyPropertyType).value[0]
 
 
 elif sys.platform.startswith("darwin"):
+  from AppKit import NSWorkspace
 
   class FocusChecker(IFocusChecker):
     def bind_kandinsky_window(self):
