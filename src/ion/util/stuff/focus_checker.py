@@ -317,7 +317,9 @@ elif sys.platform.startswith("darwin"):
       return CGWindowFindByPID(os.getpid(), ("TkTopLevel", "pygame"), False, "kandinsky")
 
     def bind_python_console(self):
-      wid = CGWindowFindByPID(os.getpid(), ("TkTopLevel", "pygame"), True, "kandinsky")
+      main_script = os.path.basename(sys.argv[0])
+
+      wid = CGWindowFindByPID(os.getpid(), ("TkTopLevel", "pygame"), True, main_script)
       if wid == 0: wid = CGWindowFindByPID(os.getpid(), ("TkTopLevel", "pygame"), True)
 
       if wid == 0:
@@ -325,7 +327,7 @@ elif sys.platform.startswith("darwin"):
         # So try going back in the parent processes to find a valid window
         ppid = os.getppid()
         for _ in range(20): # Loop limit to avoid infinite loop
-          wid = CGWindowFindByPID(ppid, ("TkTopLevel", "pygame"), True, "kandinsky")
+          wid = CGWindowFindByPID(ppid, ("TkTopLevel", "pygame"), True, main_script)
           if wid == 0: wid = CGWindowFindByPID(ppid, ("TkTopLevel", "pygame"), True)
 
           # Found an valid window
