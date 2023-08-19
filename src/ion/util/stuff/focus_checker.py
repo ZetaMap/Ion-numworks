@@ -8,14 +8,27 @@ GET_INPUT_EVERYWHERE = 'ION_ENABLE_GET_INPUT_EVERYWHERE' in os.environ
 
 
 class IFocusChecker:
+  """
+  Base class for FocusChecker
+
+  following methods must be redefined:
+    - search_window(pid, classname, not_classname, contains_title)
+    - get_focussed_window()
+    - get_ppid_of_pid(pid)
+  """
+
   kandinsky_window_id = 0
   kandinsky_not_found_error_printed = False
   python_window_id = 0
+  script_pid = os.getpid()
+  # used for a more specific search
+  script_filename = os.path.basename(sys.argv[0])
+  # 'TkTopLevel' is the class name of root tkinter window, 'pygame' because in old releases of kandinsky i used pygame
+  classnames_to_search = ("TkTopLevel", "pygame")
 
   def __init__(self):
     if self.kandinsky_window_id == 0 and "kandinsky" in sys.modules:
       # To find kandinsky is more simple, no need to find parent processes with a valid window
-      # 'TkTopLevel' is the class name of root tkinter window, 'pygame' because in old releases of kandinsky i used pygame
       self.kandinsky_window_id = self.bind_kandinsky_window()
 
       if self.kandinsky_window_id == 0 and not self.kandinsky_not_found_error_printed:
@@ -45,11 +58,50 @@ class IFocusChecker:
     return ((self.python_window_id and focussed == self.python_window_id) or
             (self.kandinsky_window_id and focussed == self.kandinsky_window_id))
 
-  def bind_kandinsky_window(self):
+  def search_window(self, pid=0, classname=None, not_classname=False, contains_title=None):
     raise NotImplementedError
 
-  def bind_python_console(self):
+  def _get_window(self, pid=0, classname=None, not_classname=False, contains_title=None):
+    if type(pid) != int or pid < 0: raise ValueError("invalid pid")
+    if not pid and not classname and not contains_title: raise ValueError("pid, classname or contains_title must be specified")
+    if classname:
+      if type(classname) in (list, tuple): pass
+      elif type(classname) == str: classname = (classname,)
+      else: raise TypeError("invalid type for classname")
+    if contains_title:
+      if type(contains_title) != str: raise TypeError("invalid type for contains_title")
+      contains_title = contains_title.lower()
+
+    return self.search_window(pid, classname, not_classname, contains_title)
+
+  def get_ppid_of_pid(self, pid):
     raise NotImplementedError
+
+  def bind_kandinsky_window(self):
+    return self._get_window(self.script_pid, self.classnames_to_search, False, "kandinsky")
+
+  def bind_python_console(self):
+      wid = self._get_window(self.script_pid, self.classnames_to_search, True, self.script_filename)
+      if wid == 0: wid = self._get_window(self.script_pid, self.classnames_to_search, True)
+
+      if wid == 0:
+        # Python probably started by another process, in this mode, python don't have 'real' window
+        # So try going back in the parent processes to find a valid window
+        ppid = os.getppid()
+        for _ in range(20): # Loop limit to avoid infinite loop
+          wid = self._get_window(ppid, self.classnames_to_search, True, self.script_filename)
+          if wid == 0: wid = self._get_window(ppid, self.classnames_to_search, True)
+
+          # Found an valid window
+          if wid: break
+
+          # Not found at this time, try with his ppid
+          found_ppid = self.get_ppid_of_pid(ppid)
+          if found_ppid < 0: continue # error happening, will try again in the next iteration
+          if found_ppid == 0: break # 0 is not a valid PID (0 is the kernel itself)
+          ppid = found_ppid
+
+      return wid
 
   def get_focussed_window(self):
     raise NotImplementedError
@@ -68,76 +120,44 @@ if GET_INPUT_EVERYWHERE:
 elif sys.platform.startswith("win"):
   import ctypes
 
-  def GetFirstWindowFromThreadProcessId(pid, classname=None, not_classname=False, contains_title=None):
-    if classname:
-      if type(classname) in (list, tuple): pass
-      elif type(classname) == str: classname = (classname,)
-      else: raise TypeError("invalid type for class name")
-    if contains_title:
-      if type(contains_title) != str: raise TypeError("invalid type for contains name")
-      contains_title = contains_title.lower()
-
-    def foreach_window(hwnd, _):
-      lpdw = ctypes.c_uint()
-      ctypes.windll.user32.GetWindowThreadProcessId(hwnd, ctypes.byref(lpdw))
-
-      if lpdw.value == pid and ctypes.windll.user32.IsWindowVisible(hwnd):
-        if classname:
-          buff = ctypes.create_unicode_buffer(256)
-          ctypes.windll.user32.GetClassNameW(hwnd, buff)
-
-          if not ((not_classname and any([buff.value != name for name in classname])) or
-              (not not_classname and any([buff.value == name for name in classname]))):
-            return True
-
-        if contains_title:
-          buff = ctypes.create_unicode_buffer(256)
-          ctypes.windll.user32.GetWindowTextW(hwnd, buff, 256)
-
-          if contains_title not in buff.value.lower(): return True
-
-        window.value = hwnd
-        return False
-      return True
-
-    window = ctypes.c_uint(0)
-    ctypes.windll.user32.EnumWindows(ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_uint, ctypes.c_uint)(foreach_window), 0)
-    return window.value
-
   class FocusChecker(IFocusChecker):
-    def bind_kandinsky_window(self):
-      return GetFirstWindowFromThreadProcessId(os.getpid(), ("TkTopLevel", "pygame"), False, "kandinsky")
+    def search_window(self, pid=0, classname=None, not_classname=False, contains_title=None):
+      if pid == 0: raise ValueError("a pid is needed")
 
-    def bind_python_console(self):
-      # First, try to search the script name in title of window, for a more specific search
-      main_script = os.path.basename(sys.argv[0])
+      def foreach_window(hwnd, _):
+        lpdw = ctypes.c_uint()
+        ctypes.windll.user32.GetWindowThreadProcessId(hwnd, ctypes.byref(lpdw))
 
-      wid = GetFirstWindowFromThreadProcessId(os.getpid(), ("TkTopLevel", "pygame"), True, main_script)
-      if wid == 0: wid = GetFirstWindowFromThreadProcessId(os.getpid(), ("TkTopLevel", "pygame"), True)
+        if lpdw.value == pid and ctypes.windll.user32.IsWindowVisible(hwnd):
+          if classname:
+            buff = ctypes.create_unicode_buffer(256)
+            ctypes.windll.user32.GetClassNameW(hwnd, buff)
 
-      if wid == 0:
-        # Python probably started by another process, in this mode, python don't have 'real' window
-        # So try going back in the parent processes to find a valid window
-        ppid = os.getppid()
-        for _ in range(20): # Loop limit to avoid infinite loop
-          wid = GetFirstWindowFromThreadProcessId(ppid, ("TkTopLevel", "pygame"), True, main_script)
-          if wid == 0: wid = GetFirstWindowFromThreadProcessId(ppid, ("TkTopLevel", "pygame"), True)
+            if not ((not_classname and any([buff.value != name for name in classname])) or
+                (not not_classname and any([buff.value == name for name in classname]))):
+              return True
 
-          # Found an valid window
-          if wid: break
+          if contains_title:
+            buff = ctypes.create_unicode_buffer(256)
+            ctypes.windll.user32.GetWindowTextW(hwnd, buff, 256)
 
-          # Not found at this time, try with his ppid
-          # Use 'wmic' command to get ppid of process
-          try: result = [i.strip() for i in subprocess.check_output(f"wmic process where ProcessId={ppid} get ParentProcessId".split(' ')).decode().splitlines() if i.strip() != '']
-          except subprocess.CalledProcessError: continue # Error happening, will try again in the next iteration
+            if contains_title not in buff.value.lower(): return True
 
-          if len(result) == 1:
-            # No parent found, parent died or idk
-            del check_output, CalledProcessError
-            break
-          else: ppid = int(result[1].strip())
+          window.value = hwnd
+          return False
+        return True
 
-      return wid
+      window = ctypes.c_uint(0)
+      ctypes.windll.user32.EnumWindows(ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_uint, ctypes.c_uint)(foreach_window), 0)
+      return window.value
+
+    def get_ppid_of_pid(self, pid):
+      # Use 'wmic' command to get ppid of process
+      try: result = [i.strip() for i in subprocess.check_output(f"wmic process where ProcessId={pid} get ParentProcessId".split(' ')).decode().splitlines() if i.strip() != '']
+      except subprocess.CalledProcessError: return -1
+
+      if len(result) == 1: return -2
+      return int(result[1].strip())
 
     def get_focussed_window(self):
       return ctypes.windll.user32.GetForegroundWindow()
@@ -170,28 +190,33 @@ elif sys.platform.startswith("linux"):
   # TODO: complete support of wayland
   is_wayland = graphical_server_type == "wayland"
 
-  def get_wm_pid(window):
-    p = window.get_full_property(window.display.get_atom('_NET_WM_PID'), Xlib.X.AnyPropertyType)
-    if p is None: return None
-    return p.value[0]
+  class FocusChecker(IFocusChecker):
+    # Use sys.argv[0] because the window classname of pygame if file name of script
+    classnames_to_search = ("Tk", IFocusChecker.script_filename)
 
-  def search_window(display, pid=0, classname=None, not_classname=False, contains_title=None):
-    if type(pid) != int or pid < 0: raise ValueError("invalid pid")
-    if not pid and not classname and not contains_title: raise ValueError("pid, classname or contains_title must be specified")
-    if classname:
-      if type(classname) in (list, tuple): pass
-      elif type(classname) == str: classname = (classname,)
-      else: raise TypeError("invalid type for classname")
-    if contains_title:
-      if type(contains_title) != str: raise TypeError("invalid type for contains_title")
-      contains_title = contains_title.lower()
+    def __init__(self):
+      self.display = Xlib.display.Display()
+      # Close the socket when script is finished
+      atexit.register(lambda: self.display.display.close_internal("client"))
+      super().__init__()
 
-    wins = [display.screen().root] # should loop over all screens
+    def __del__(self):
+      try: self.display.close()
+      except Xlib.error.ConnectionClosedError: pass # already closed
+    __exit__ = __del__
 
-    while len(wins) != 0:
+    def get_wm_pid(window):
+      p = window.get_full_property(window.display.get_atom('_NET_WM_PID'), Xlib.X.AnyPropertyType)
+      if p is None: return None
+      return p.value[0]
+
+    def search_window(self, pid=0, classname=None, not_classname=False, contains_title=None):
+      wins = [self.display.screen().root] # should loop over all screens
+
+      while len(wins) != 0:
         win = wins.pop(0)
         try:
-          wpid = get_wm_pid(win)
+          wpid = self.get_wm_pid(win)
 
           if (True if pid == 0 else (wpid and pid == wpid)) and win.get_attributes().map_state == Xlib.X.IsViewable:
             found = True
@@ -206,7 +231,7 @@ elif sys.platform.startswith("linux"):
               wtitle = win.get_wm_name()
               # check the value because some window return an empty title with this method
               if wtitle == b'': 
-                wtitle = win.get_full_property(display.get_atom('_NET_WM_NAME'), Xlib.X.AnyPropertyType)
+                wtitle = win.get_full_property(self.display.get_atom('_NET_WM_NAME'), Xlib.X.AnyPropertyType)
                 if wtitle: wtitle = wtitle.value.decode()
               if not wtitle or contains_title not in wtitle.lower(): found = False
 
@@ -214,30 +239,19 @@ elif sys.platform.startswith("linux"):
 
           subwins = win.query_tree().children
           if subwins != None: wins += subwins
+
         except (Xlib.error.BadWindow, TypeError): pass # catch the case of a not valid window or invalid reply
         except Xlib.error.ConnectionClosedError: break # connection closed, no need to continue to search the window
-
-    return 0
-
-  class FocusChecker(IFocusChecker):
-    def __init__(self):
-      self.display = Xlib.display.Display()
-      # Close the socket when script is finished
-      atexit.register(lambda: self.display.display.close_internal("client"))
-      super().__init__()
-
-    def __del__(self):
-      try: self.display.close()
-      except Xlib.error.ConnectionClosedError: pass # already closed
-    __exit__ = __del__
+      return 0
 
     def bind_kandinsky_window(self):
-      # Use sys.argv[0] because the window classname of pygame if file name of script
-      wid = search_window(self.display, os.getpid(), ("Tk", os.path.basename(sys.argv[0])), False, "kandinsky")
+      wid = super().bind_kandinsky_window()
+
       # In some linux distributions Tkinter do not set window property '_NET_WM_PID'
       # So try to find the window with a less reliable method
       # EDIT: is in all linux distributions
-      if not wid: wid = search_window(self.display, 0, "Tk", False, "kandinsky")
+      if not wid: wid = self._get_window(0, self.classnames_to_search[0], False, "kandinsky")
+
       return wid
 
     def bind_python_console(self):
@@ -247,32 +261,15 @@ elif sys.platform.startswith("linux"):
                    "The python console window will probably not be localized correctly. "
                    "To avoid this problem, start your session in X11 mode.", UserWarning)
 
-      # First, try to search the script name in title of window, for a more specific search
-      main_script = os.path.basename(sys.argv[0])
+      return super().bind_python_console()
 
-      wid = search_window(self.display, os.getpid(), ("Tk", main_script), True, main_script)
-      if wid == 0: wid = search_window(self.display, os.getpid(), ("Tk", main_script), True)
-
-      if wid == 0:
-        # Python probably started by another process, in this mode, python don't have 'real' window
-        # So try going back in the parent processes to find a valid window
-        ppid = os.getppid()
-        for _ in range(20): # Loop limit to avoid infinite loop
-          wid = search_window(self.display, ppid, ("Tk", main_script), True, main_script)
-          if wid == 0: wid = search_window(self.display, ppid, ("Tk", main_script), True)
-
-          # Found an valid window
-          if wid: break
-
-          # Not found at this time, try with his ppid
-          try: result = subprocess.check_output(f"ps -o ppid= {ppid}".split(' ')).decode().strip()
-          except subprocess.CalledProcessError: continue # Error happening, will try again in the next iteration
-
-          if not result: break
-          else: ppid = int(result)
-          if not ppid: break
-
-      return wid
+    def get_ppid_of_pid(self, pid):
+      try: result = subprocess.check_output(f"ps -o ppid= {pid}".split(' ')).decode().strip()
+      except subprocess.CalledProcessError: return -1
+      
+      # check the return value
+      if not result: return -2
+      return int(result)
 
     def get_focussed_window(self):
       # remove the resource warning
@@ -288,60 +285,32 @@ elif sys.platform.startswith("darwin"):
     e.msg = "pyobjc module and the Quartz extension are not installed. Please install it with command 'pip install pyobjc-core pyobjc-framework-Quartz'"
     raise
 
-  def CGWindowFindByPID(pid, classname=None, not_classname=False, contains_title=None):
-    if classname:
-      if type(classname) in (list, tuple): pass
-      elif type(classname) == str: classname = (classname,)
-      else: raise TypeError("invalid type for classname")
-    if contains_title:
-      if type(contains_title) != str: raise TypeError("invalid type for contains_title")
-      contains_title = contains_title.lower()
-
-    for win in CGWindowListCopyWindowInfo(kCGWindowListOptionOnScreenOnly, kCGNullWindowID):
-      if win['kCGWindowOwnerPID'] == pid:
-        if classname:
-          windowClassName = ... #TODO: find the classname
-          if not ((not_classname and any([windowClassName != name for name in classname])) or
-              (not not_classname and any([windowClassName == name for name in classname]))):
-            continue
-
-        if contains_title:
-          windowTitle = win.get('kCGWindowName', None)
-          if not windowTitle or contains_title not in windowTitle.lower(): continue
-
-        return win['kCGWindowNumber']
-    return 0 
-
   class FocusChecker(IFocusChecker):
-    def bind_kandinsky_window(self):
-      return CGWindowFindByPID(os.getpid(), ("TkTopLevel", "pygame"), False, "kandinsky")
+    #classnames_to_search = ("", "")
 
-    def bind_python_console(self):
-      main_script = os.path.basename(sys.argv[0])
+    def search_window(self, pid=0, classname=None, not_classname=False, contains_title=None):
+      for win in CGWindowListCopyWindowInfo(kCGWindowListOptionOnScreenOnly, kCGNullWindowID):
+        if pid == 0 or win['kCGWindowOwnerPID'] == pid:
+          if classname:
+            windowClassName = ... #TODO: find the classname
+            if not ((not_classname and any([windowClassName != name for name in classname])) or
+                (not not_classname and any([windowClassName == name for name in classname]))):
+              continue
 
-      wid = CGWindowFindByPID(os.getpid(), ("TkTopLevel", "pygame"), True, main_script)
-      if wid == 0: wid = CGWindowFindByPID(os.getpid(), ("TkTopLevel", "pygame"), True)
+          if contains_title:
+            windowTitle = win.get('kCGWindowName', None)
+            if not windowTitle or contains_title not in windowTitle.lower(): continue
 
-      if wid == 0:
-        # Python probably started by another process, in this mode, python don't have 'real' window
-        # So try going back in the parent processes to find a valid window
-        ppid = os.getppid()
-        for _ in range(20): # Loop limit to avoid infinite loop
-          wid = CGWindowFindByPID(ppid, ("TkTopLevel", "pygame"), True, main_script)
-          if wid == 0: wid = CGWindowFindByPID(ppid, ("TkTopLevel", "pygame"), True)
+          return win['kCGWindowNumber']
+      return 0
 
-          # Found an valid window
-          if wid: break
-
-          # Not found at this time, try with his ppid
-          try: result = subprocess.check_output(f"ps -o ppid= {ppid}".split(' ')).decode().strip()
-          except subprocess.CalledProcessError: continue # Error happening, will try again in the next iteration
-
-          if not result: break
-          else: ppid = int(result)
-          if not ppid: break
-
-      return wid
+    def get_ppid_of_pid(self, pid):
+      try: result = subprocess.check_output(f"ps -o ppid= {pid}".split(' ')).decode().strip()
+      except subprocess.CalledProcessError: return -1
+      
+      # check the return value
+      if not result: return -2
+      return int(result)
 
     def get_focussed_window(self):
       front_app_pid = NSWorkspace.sharedWorkspace().frontmostApplication().processIdentifier()
