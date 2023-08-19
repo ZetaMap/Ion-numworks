@@ -87,7 +87,7 @@ elif sys.platform.startswith("win"):
           ctypes.windll.user32.GetClassNameW(hwnd, buff)
 
           if not ((not_classname and any([buff.value != name for name in classname])) or
-                  (not not_classname and any([buff.value == name for name in classname]))):
+              (not not_classname and any([buff.value == name for name in classname]))):
             return True
 
         if contains_title:
@@ -199,7 +199,7 @@ elif sys.platform.startswith("linux"):
             if found and classname:
               wclass = win.get_wm_class()
               if not wclass or not ((not_classname and any([wclass[1] != name for name in classname])) or
-                  (not not_classname and any([wclass[1] == name for name in classname]))):
+                                (not not_classname and any([wclass[1] == name for name in classname]))):
                 found = False
 
             if found and contains_title:
@@ -218,7 +218,6 @@ elif sys.platform.startswith("linux"):
         except Xlib.error.ConnectionClosedError: break # connection closed, no need to continue to search the window
 
     return 0
-
 
   class FocusChecker(IFocusChecker):
     def __init__(self):
@@ -282,17 +281,72 @@ elif sys.platform.startswith("linux"):
 
 
 elif sys.platform.startswith("darwin"):
-  from AppKit import NSWorkspace
+  try:
+    from AppKit import NSWorkspace
+    from Quartz import CGWindowListCopyWindowInfo, kCGWindowListOptionOnScreenOnly, kCGNullWindowID
+  except ImportError as e:
+    e.msg = "pyobjc module and the Quartz extension are not installed. Please install it with command 'pip install pyobjc-core pyobjc-framework-Quartz'"
+    raise
+
+  def CGWindowFindByPID(pid, classname=None, not_classname=False, contains_title=None):
+    if classname:
+      if type(classname) in (list, tuple): pass
+      elif type(classname) == str: classname = (classname,)
+      else: raise TypeError("invalid type for classname")
+    if contains_title:
+      if type(contains_title) != str: raise TypeError("invalid type for contains_title")
+      contains_title = contains_title.lower()
+
+    for win in CGWindowListCopyWindowInfo(kCGWindowListOptionOnScreenOnly, kCGNullWindowID):
+      if win['kCGWindowOwnerPID'] == pid:
+        if classname:
+          windowClassName = ... #TODO: find the classname
+          if not ((not_classname and any([windowClassName != name for name in classname])) or
+              (not not_classname and any([windowClassName == name for name in classname]))):
+            continue
+
+        if contains_title:
+          windowTitle = win.get('kCGWindowName', None)
+          if not windowTitle or contains_title not in windowTitle.lower(): continue
+
+        return win['kCGWindowNumber']
+    return 0 
 
   class FocusChecker(IFocusChecker):
     def bind_kandinsky_window(self):
-      ...
+      return CGWindowFindByPID(os.getpid(), ("TkTopLevel", "pygame"), False, "kandinsky")
 
     def bind_python_console(self):
-      ...
+      wid = CGWindowFindByPID(os.getpid(), ("TkTopLevel", "pygame"), True, "kandinsky")
+      if wid == 0: wid = CGWindowFindByPID(os.getpid(), ("TkTopLevel", "pygame"), True)
+
+      if wid == 0:
+        # Python probably started by another process, in this mode, python don't have 'real' window
+        # So try going back in the parent processes to find a valid window
+        ppid = os.getppid()
+        for _ in range(20): # Loop limit to avoid infinite loop
+          wid = CGWindowFindByPID(ppid, ("TkTopLevel", "pygame"), True, "kandinsky")
+          if wid == 0: wid = CGWindowFindByPID(ppid, ("TkTopLevel", "pygame"), True)
+
+          # Found an valid window
+          if wid: break
+
+          # Not found at this time, try with his ppid
+          try: result = subprocess.check_output(f"ps -o ppid= {ppid}".split(' ')).decode().strip()
+          except subprocess.CalledProcessError: continue # Error happening, will try again in the next iteration
+
+          if not result: break
+          else: ppid = int(result)
+          if not ppid: break
+
+      return wid
 
     def get_focussed_window(self):
-      ...
+      front_app_pid = NSWorkspace.sharedWorkspace().frontmostApplication().processIdentifier()
+      for win in CGWindowListCopyWindowInfo(kCGWindowListOptionOnScreenOnly, kCGNullWindowID):
+        if win['kCGWindowOwnerPID'] == front_app_pid:
+          return win['kCGWindowNumber']
+      return 0 # cannot happening
 
 
 else:
