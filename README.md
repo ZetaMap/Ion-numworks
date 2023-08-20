@@ -112,6 +112,11 @@ To do this, first import the environ of os module like this: ``import os``.
 os.environ['KANDINSKY_OS_MODE'] = '<number>'
 ```
 
+* Or if you want to not synchronize the library with kandinsky, use this environ name:
+```python
+os.environ['ION_OS_MODE'] = '<number>'
+```
+
 * Enable debug mode:
 ```python
 # No debug message, so will just print the full stacktrace when an error occurs

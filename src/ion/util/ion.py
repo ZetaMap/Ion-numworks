@@ -8,7 +8,7 @@ from .stuff.common import prettywarn
 DEBUG = "ION_ENABLE_DEBUG" in environ
 
 # '0': PC, '1': Numworks, '2': Omega, '3': Upsilon
-OS_MODE = environ.get('KANDINSKY_OS_MODE')
+OS_MODE = environ.get('KANDINSKY_OS_MODE') or environ.get('ION_OS_MODE')
 OS_MODE = (int(OS_MODE) if 0 <= int(OS_MODE) < 4 else 1) if OS_MODE and OS_MODE.isdecimal() else 1
 
 # Check version of kandinsky to print an warning if is 'too old'
