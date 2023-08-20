@@ -12,7 +12,7 @@ except ImportError as e:
 __name__ = "ion"
 __version__ = "2.0"
 try:
-  with open("README.md") as f: __doc__ = f.read()
+  with open("README.md", encoding="utf-8") as f: __doc__ = f.read()
   del f
 except (FileNotFoundError, OSError): __doc__ = "<unknown>"
 __all__ = [
