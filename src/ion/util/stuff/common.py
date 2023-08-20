@@ -1,8 +1,6 @@
 import warnings
 warnings.filters = [] # Reset filters because some default appear in, and HIS DON'T PRINT MY WARNINGS!!
 
-#TODO: do not print warnings if the module is imported by kandinsky itself
-
 # prettywarn method of pysdl2
 def prettywarn(message, warntype=None):
     """Prints a suppressable warning without stack or line info."""

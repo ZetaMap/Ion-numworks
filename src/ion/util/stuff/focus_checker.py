@@ -323,6 +323,6 @@ elif sys.platform.startswith("darwin"):
 else:
   # Platform not supported for focus, create an fake FocusChecker class
   # The 'focus on only window' will be disabled
-  prettywarn(f"platform '{sys.platform}' not supported for inputs only in focussed window. "
+  prettywarn(f"platform {sys.platform!r} not supported for inputs only in focussed window. "
               "Inputs will be gets on entire system", ImportWarning)
   FocusChecker = NoopFocusChecker
