@@ -1,8 +1,7 @@
 import os
-os.environ['ION_DISABLE_KANDINSKY_INPUT_ONLY'] = ''
+#os.environ['ION_DISABLE_KANDINSKY_INPUT_ONLY'] = ''
 os.environ['ION_OS_MODE'] = '3'
-from __init__ import *
-
+from ion import *
 from kandinsky import *
 
 while 1:

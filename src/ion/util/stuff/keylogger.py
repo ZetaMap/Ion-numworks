@@ -1,6 +1,7 @@
 from pynput.keyboard import Listener
 from .keys import ALL_KEYS, NUMBER_OF_KEYS
 from .focus_checker import FocusChecker
+from .common import print_debug
 
 class KeyLogger:
   _listener = None
@@ -13,6 +14,7 @@ class KeyLogger:
     if KeyLogger._listener: raise RuntimeError("KeyLogger already created")
 
     def on_press(key):
+      print_debug("Pressed", key)
       if hasattr(key, "char"): key = key.char
       KeyLogger._focused = KeyLogger._check_focus()
 
@@ -23,6 +25,7 @@ class KeyLogger:
             KeyLogger.set_key(ALL_KEYS[i]["code"], True)
 
     def on_release(key):
+      print_debug("Released", key)
       if hasattr(key, "char"): key = key.char
 
       for i in range(NUMBER_OF_KEYS):

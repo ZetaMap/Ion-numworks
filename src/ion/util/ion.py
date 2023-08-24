@@ -2,10 +2,11 @@ from os import environ
 from random import randint, random
 from .stuff.keylogger import *
 from .stuff.keys import ALL_KEYS
-from .stuff.common import prettywarn
+from .stuff.common import *
 
-# Enable debug, get the full stacktrace
+# Enable debug
 DEBUG = "ION_ENABLE_DEBUG" in environ
+set_debug(DEBUG)
 
 # '0': PC, '1': Numworks, '2': Omega, '3': Upsilon
 OS_MODE = environ.get('KANDINSKY_OS_MODE') or environ.get('ION_OS_MODE')
@@ -46,5 +47,6 @@ class Ion:
 
   # Caller
   def call(method, *args, **kwargs):
+    print_debug("Event", method.__name__, (*args, *[f"{k}={repr(v)}" for k, v in kwargs.items()]), sep='')
     try: return method(*args, **kwargs), None
     except BaseException as e: return None, Exception.with_traceback(e, e.__traceback__.tb_next if DEBUG else None)

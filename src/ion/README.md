@@ -119,7 +119,7 @@ os.environ['ION_OS_MODE'] = '<number>'
 
 * Enable debug mode:
 ```python
-# No debug message, so will just print the full stacktrace when an error occurs
+# Print full error stacktrace, the original pressed key and methods calls
 os.eviron['ION_ENABLE_DEBUG'] = ''
 ```
 

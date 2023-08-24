@@ -1,4 +1,4 @@
-from .common import prettywarn
+from .common import prettywarn, print_debug
 import sys, os, subprocess
 
 # By default it just read kandinsky window (only if is focused)
@@ -15,6 +15,9 @@ class IFocusChecker:
     - search_window(pid, classname, not_classname, contains_title)
     - get_focussed_window()
     - get_ppid_of_pid(pid)
+
+  following variables must be redefined:
+    - classnames_to_search
   """
 
   kandinsky_window_id = 0
@@ -23,10 +26,12 @@ class IFocusChecker:
   script_pid = os.getpid()
   # used for a more specific search
   script_filename = os.path.basename(sys.argv[0])
-  # 'TkTopLevel' is the class name of root tkinter window, 'pygame' because in old releases of kandinsky i used pygame
-  classnames_to_search = ("TkTopLevel", "pygame")
+  # class list to search, must be redefined
+  classnames_to_search = None
 
   def __init__(self):
+    if self.classnames_to_search is None: raise NameError(".classnames_to_search must be defined")
+
     if self.kandinsky_window_id == 0 and "kandinsky" in sys.modules:
       # To find kandinsky is more simple, no need to find parent processes with a valid window
       self.kandinsky_window_id = self.bind_kandinsky_window()
@@ -35,6 +40,7 @@ class IFocusChecker:
         # Kandinsky window not found
         prettywarn("could not find the kandinsky window to get inputs.", RuntimeWarning)
         self.kandinsky_not_found_error_printed = True
+      else: print_debug("FocusChecker", f"found the window '{self.kandinsky_window_id}' as kandinsky")
 
       if USE_KANDINSKY_INPUT_ONLY:
         self.python_window_id = 0
@@ -49,6 +55,7 @@ class IFocusChecker:
         # Python probably started in no-shell-mode and/or by a task
         # So will not log python console inputs
         prettywarn("cannot find an valid window to get inputs from python console.", RuntimeWarning)
+      else: print_debug("FocusChecker", f"found the window '{self.python_window_id}' as python console")
 
   def __call__(self):
     # Verify is kandinsky is imported, for the first true test (if no error) this will re-init FocusChecker
@@ -121,6 +128,9 @@ elif sys.platform.startswith("win"):
   import ctypes
 
   class FocusChecker(IFocusChecker):
+    # 'TkTopLevel' is the class name of root tkinter window, 'pygame' because in old releases of kandinsky i used pygame
+    classnames_to_search = ("TkTopLevel", "pygame")
+
     def search_window(self, pid=0, classname=None, not_classname=False, contains_title=None):
       if pid == 0: raise ValueError("a pid is needed")
 
@@ -286,7 +296,7 @@ elif sys.platform.startswith("darwin"):
     raise
 
   class FocusChecker(IFocusChecker):
-    #classnames_to_search = ("", "")
+    classnames_to_search = ("Tk", "pygame")
 
     def search_window(self, pid=0, classname=None, not_classname=False, contains_title=None):
       for win in CGWindowListCopyWindowInfo(kCGWindowListOptionOnScreenOnly, kCGNullWindowID):
