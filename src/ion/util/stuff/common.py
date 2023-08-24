@@ -15,4 +15,7 @@ def set_debug(enabled):
   DEBUG = enabled
 
 def print_debug(type, *msgs, **print_args):
-  if DEBUG: print(f"DEBUG: {type}:", *msgs, **print_args)
+  if DEBUG:
+    if "end" in print_args and not print_args["end"].startswith('\n'): print_args["end"] += '\n'
+    print(f"DEBUG: {type}: ", end='')
+    print(*msgs, **print_args)
