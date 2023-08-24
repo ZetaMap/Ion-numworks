@@ -215,7 +215,7 @@ elif sys.platform.startswith("linux"):
       except Xlib.error.ConnectionClosedError: pass # already closed
     __exit__ = __del__
 
-    def get_wm_pid(window):
+    def get_wm_pid(self, window):
       p = window.get_full_property(window.display.get_atom('_NET_WM_PID'), Xlib.X.AnyPropertyType)
       if p is None: return None
       return p.value[0]
@@ -308,7 +308,7 @@ elif sys.platform.startswith("darwin"):
               continue
 
           if contains_title:
-            windowTitle = win.get('kCGWindowName', None)
+            windowTitle = win.get('kCGWindowName', None) or win.get('kCGWindowTitle', None)
             if not windowTitle or contains_title not in windowTitle.lower(): continue
 
           return win['kCGWindowNumber']
