@@ -34,16 +34,17 @@ class Ion:
     try: return KeyLogger.get_key(k)
     except IndexError: return False
 
-  get_keys = lambda: set([k["name"] for k in ALL_KEYS if KeyLogger.get_key(k["code"])])
+  def get_keys():
+    return set([k["name"] for k in ALL_KEYS if KeyLogger.get_key(k["code"])])
 
   # All the following functions only give a fake result to give a real look of library
-  battery = lambda: 4.20+randint(900, 1500)/10**5+random()/10**5
-  battery_level = lambda: 3
-  battery_ischarging = lambda: True
+  def battery(): return 4.20+randint(900, 1500)/10**5+random()/10**5
+  def battery_level(): return 3
+  def battery_ischarging(): return True
   def set_brightness(level):
     if type(level) != int: raise TypeError(f"can't convert {type(level).__name__} to int")
     Ion.brightness = 240 if level%256 > 240 else level%256
-  get_brightness = lambda: Ion.brightness
+  def get_brightness(): return Ion.brightness
 
   # Caller
   def call(method, *args, **kwargs):
