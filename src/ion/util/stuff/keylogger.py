@@ -11,7 +11,8 @@ class KeyLogger:
 
   @staticmethod
   def __init__():
-    if KeyLogger._listener: raise RuntimeError("KeyLogger already created")
+    """Start the KeyLogger. This is a global instance, it can't be used as an object."""
+    if KeyLogger._listener: raise RuntimeError("KeyLogger already running")
 
     def on_press(key):
       print_debug("Pressed", key)
@@ -39,10 +40,21 @@ class KeyLogger:
     KeyLogger._listener.start()
 
   @staticmethod
+  def stop():
+    """Stop the KeyLogger"""
+
+    if KeyLogger._listener: KeyLogger._listener.stop()
+    KeyLogger._listener = None
+    KeyLogger._check_focus = None
+    KeyLogger._focused = False
+    KeyLogger._keyboard_state = {}
+  __del__ = stop
+
+  @staticmethod
   def get_key(code):
     """Get state of a key (is pressed or not) with his keycode"""
 
-    if KeyLogger._listener is None: raise RuntimeError("KeyLogger not created")
+    if KeyLogger._listener is None: raise RuntimeError("KeyLogger not running")
     elif type(code) != int: raise TypeError(f"keycode must be an integer, not {type(code).__name__}")
     elif code not in KeyLogger._keyboard_state: raise IndexError(f"key with code '{code}' not found")
     return KeyLogger._focused and KeyLogger._keyboard_state[code]
@@ -51,7 +63,7 @@ class KeyLogger:
   def set_key(code, is_pressed, add=False):
     """Set state of a key with his keycode"""
 
-    if KeyLogger._listener is None: raise RuntimeError("KeyLogger not created")
+    if KeyLogger._listener is None: raise RuntimeError("KeyLogger not running")
     elif type(code) != int: raise TypeError(f"keycode must be an integer, not {type(code).__name__}")
     elif not add and code not in KeyLogger._keyboard_state: raise IndexError(f"key with code '{code}' not found")
     KeyLogger._keyboard_state[code] = bool(is_pressed)
