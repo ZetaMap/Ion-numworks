@@ -4,7 +4,7 @@ KEY_LEFT =             {'code': 0,  'name': 'left',      'key': Key.left}
 KEY_UP =               {'code': 1,  'name': 'up',        'key': Key.up}
 KEY_DOWN =             {'code': 2,  'name': 'down',      'key': Key.down}
 KEY_RIGHT =            {'code': 3,  'name': 'right',     'key': Key.right}
-KEY_OK =               {'code': 4,  'name': 'OK',        'key': Key.insert}
+KEY_OK =               {'code': 4,  'name': 'OK',        'key': Key.enter}
 KEY_BACK =             {'code': 5,  'name': 'back',      'key': Key.delete}
 KEY_HOME =             {'code': 6,  'name': 'home',      'key': Key.esc}
 KEY_ONOFF =            {'code': 7,  'name': 'onOff',     'key': Key.end}
@@ -45,7 +45,7 @@ KEY_ZERO =             {'code': 48, 'name': '0',         'key': '0'}
 KEY_DOT =              {'code': 49, 'name': '.',         'key': '.'}
 KEY_EE =               {'code': 50, 'name': 'EE',        'key': '!'}
 KEY_ANS =              {'code': 51, 'name': 'Ans',       'key': 'a'}
-KEY_EXE =              {'code': 52, 'name': 'EXE',       'key': Key.enter}
+KEY_EXE =              {'code': 52, 'name': 'EXE',       'key': Key.insert}# TODO: not on macos, find another key
 
 # Put all keys in ALL_KEYS and redefine each key only by its code
 ALL_KEYS = []

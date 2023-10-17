@@ -35,7 +35,7 @@ class KeyLogger:
 
     KeyLogger._keyboard_state = {k["code"]: False for k in ALL_KEYS}
     KeyLogger._check_focus = FocusChecker()
-    KeyLogger._listener = Listener(on_press=on_press, on_release=on_release) # TODO: pynput do not module the key with capslock (and numslock)
+    KeyLogger._listener = Listener(on_press=on_press, on_release=on_release) # TODO: pynput doesn't change the key with capslock (and num-lock)
     KeyLogger._listener.start()
 
   @staticmethod

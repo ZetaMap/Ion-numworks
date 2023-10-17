@@ -81,7 +81,7 @@ class IFocusChecker:
 
     return self.search_window(pid, classname, not_classname, contains_title)
 
-  def get_ppid_of_pid(self, pid):
+  def get_ppid(self, pid):
     raise NotImplementedError
 
   def bind_kandinsky_window(self):
@@ -103,7 +103,7 @@ class IFocusChecker:
           if wid: break
 
           # Not found at this time, try with his ppid
-          found_ppid = self.get_ppid_of_pid(ppid)
+          found_ppid = self.get_ppid(ppid)
           if found_ppid < 0: continue # error happening, will try again in the next iteration
           if found_ppid == 0: break # 0 is not a valid PID (0 is the kernel itself)
           ppid = found_ppid
@@ -161,7 +161,7 @@ elif sys.platform.startswith("win"):
       ctypes.windll.user32.EnumWindows(ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_uint, ctypes.c_uint)(foreach_window), 0)
       return window.value
 
-    def get_ppid_of_pid(self, pid):
+    def get_ppid(self, pid):
       # Use 'wmic' command to get ppid of process
       try: result = [i.strip() for i in subprocess.check_output(f"wmic process where ProcessId={pid} get ParentProcessId".split(' ')).decode().splitlines() if i.strip() != '']
       except subprocess.CalledProcessError: return -1
@@ -260,12 +260,13 @@ elif sys.platform.startswith("linux"):
       # In some linux distributions Tkinter do not set window property '_NET_WM_PID'
       # So try to find the window with a less reliable method
       # EDIT: is in all linux distributions
+      # TODO: fix this
       if not wid: wid = self._get_window(0, self.classnames_to_search[0], False, "kandinsky")
 
       return wid
 
     def bind_python_console(self):
-      # Check if is wayland because we cannot locate all windows due to security reasons
+      # Check if is wayland because we cannot locate all windows due to "security reasons"
       if is_wayland and not self.kandinsky_not_found_error_printed:
         prettywarn("Wayland (used by GNOME/Ubuntu or KDE) is not fully supported. "
                    "The python console window will probably not be localized correctly. "
@@ -273,7 +274,7 @@ elif sys.platform.startswith("linux"):
 
       return super().bind_python_console()
 
-    def get_ppid_of_pid(self, pid):
+    def get_ppid(self, pid):
       try: result = subprocess.check_output(f"ps -o ppid= {pid}".split(' ')).decode().strip()
       except subprocess.CalledProcessError: return -1
       
@@ -297,7 +298,7 @@ elif sys.platform.startswith("darwin"):
 
   class FocusChecker(IFocusChecker):
     classnames_to_search = ("Tk", "pygame")
-
+    #CGWindowListCreateDescriptionFromArray 
     def search_window(self, pid=0, classname=None, not_classname=False, contains_title=None):
       for win in CGWindowListCopyWindowInfo(kCGWindowListOptionOnScreenOnly, kCGNullWindowID):
         if pid == 0 or win['kCGWindowOwnerPID'] == pid:
@@ -314,7 +315,7 @@ elif sys.platform.startswith("darwin"):
           return win['kCGWindowNumber']
       return 0
 
-    def get_ppid_of_pid(self, pid):
+    def get_ppid(self, pid):
       try: result = subprocess.check_output(f"ps -o ppid= {pid}".split(' ')).decode().strip()
       except subprocess.CalledProcessError: return -1
       
