@@ -62,8 +62,14 @@ class IFocusChecker:
     if self.kandinsky_window_id == 0 and "kandinsky" in sys.modules: self.__init__()
 
     focussed = self.get_focussed_window()
-    return ((self.python_window_id and focussed == self.python_window_id) or
+    is_focussed = ((self.python_window_id and focussed == self.python_window_id) or
             (self.kandinsky_window_id and focussed == self.kandinsky_window_id))
+    
+    # check if kandinsky window still exist, to stop the KeyLogger properly
+    if not is_focussed and self.kandinsky_window_id and not self.window_exists(self.kandinsky_window_id):
+      raise RuntimeError(f"Kandinsky window destroyed. Cannot locate it.")
+
+    return is_focussed
 
   def search_window(self, pid=0, classname=None, not_classname=False, contains_title=None):
     raise NotImplementedError
@@ -111,6 +117,10 @@ class IFocusChecker:
       return wid
 
   def get_focussed_window(self):
+    raise NotImplementedError
+  
+  def window_exists(self, *wid):
+    return True
     raise NotImplementedError
 
 # Fake FocusChecker class, will always return True
@@ -336,4 +346,4 @@ else:
   # The 'focus on only window' will be disabled
   prettywarn(f"platform {sys.platform!r} not supported for inputs only in focussed window. "
               "Inputs will be gets on entire system", ImportWarning)
-  FocusChecker = NoopFocusChecker
+  FocusChecker = NoopFocusCheck

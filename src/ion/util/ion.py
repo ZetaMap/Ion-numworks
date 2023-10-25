@@ -48,7 +48,10 @@ class Ion:
 
   # Caller
   def call(method, *args, **kwargs):
-    try: 
+    try:
       print_debug("Event", method.__name__, (*args, *[f"{k}={repr(v)}" for k, v in kwargs.items()]), sep='')
       return method(*args, **kwargs), None
-    except BaseException as e: return None, Exception.with_traceback(e, e.__traceback__.tb_next if DEBUG else None)
+    except BaseException as e:
+      return None, Exception.with_traceback(
+        KeyboardInterrupt(type(e).__name__+": "+' '.join(e.args)) if isinstance(e, RuntimeError) else e,
+        e.__traceback__.tb_next if DEBUG else None)

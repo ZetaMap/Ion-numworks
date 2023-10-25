@@ -1,5 +1,5 @@
 import os
-os.environ['ION_ENABLE_DEBUG'] = ''
+#os.environ['ION_ENABLE_DEBUG'] = ''
 os.environ['ION_OS_MODE'] = '3'
 from __init__ import *
 from kandinsky import *

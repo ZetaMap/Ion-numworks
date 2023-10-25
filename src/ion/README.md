@@ -46,13 +46,13 @@ Also i created the [Kandinsky module of Numworks](https://github.com/ZetaMap/Kan
 
 #### ***Associated keyboard keys***
 
-| Numworks key | Computer key | Field name           | Field value 
+| Numworks key | Computer key | Field name           | Field value
 |:-------------|:-------------|:---------------------|:------------
 | left         | Left         | KEY_LEFT             | 0
 | up           | Up           | KEY_UP               | 1
 | down         | Down         | KEY_DOWN             | 2
 | right        | Right        | KEY_RIGHT            | 3
-| OK           | Insert       | KEY_OK               | 4
+| OK           | Return       | KEY_OK               | 4
 | back         | Delete       | KEY_BACK             | 5
 | home         | Escape       | KEY_HOME             | 6
 | onOff        | End          | KEY_ONOFF            | 7
@@ -93,14 +93,21 @@ Also i created the [Kandinsky module of Numworks](https://github.com/ZetaMap/Kan
 | .            | .            | KEY_DOT              | 49
 | EE           | !            | KEY_EE               | 50
 | Ans          | A            | KEY_ANS              | 51
-| EXE          | Return       | KEY_EXE              | 52
+| EXE          | Insert       | KEY_EXE              | 52
 
 ### Additional features
 #### Environ options
 **/!\\ You must make its additions *before* importing ion otherwise the changes will not take effect! /!\\**
 
-You can also change some default option of library.<br> 
-To do this, first import the environ of os module like this: ``import os``.
+You can also change some default option of library.<br>
+To do this, first import os module and add a compatibility check, like this:
+```python
+try:
+  import os
+  if hasattr(os, "environ"):
+    "<environ options here>"
+except: pass
+```
 
 * Change starting OS (methods according to the selected os will be created): <br>
 *(Option name is same as Kandinsky so that, if both libraries are present, they are synchronized)*

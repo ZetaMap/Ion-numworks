@@ -1,23 +1,31 @@
 from pynput.keyboard import Listener
+from .pynput_patcher import *
 from .keys import ALL_KEYS, NUMBER_OF_KEYS
 from .focus_checker import FocusChecker
 from .common import print_debug
 
 class KeyLogger:
-  _listener = None
+  _listener: Listener = None
   _check_focus = None
   _focused = False
   _keyboard_state = {}
 
   @staticmethod
   def __init__():
-    """Start the KeyLogger. This is a global instance, it can't be used as an object."""
-    if KeyLogger._listener: raise RuntimeError("KeyLogger already running")
+    """
+    Start the KeyLogger.
+    This is a global instance, so the constructor cannot be called again until after calling .stop().
+    """
+    if KeyLogger.is_running(): raise RuntimeError("KeyLogger already running")
 
     def on_press(key):
       print_debug("Pressed", key)
       if hasattr(key, "char"): key = key.char
-      KeyLogger._focused = KeyLogger._check_focus()
+      try: KeyLogger._focused = KeyLogger._check_focus()
+      except RuntimeError:
+        # kandinsky window and/or python console no longer exists
+        KeyLogger.stop()
+        return
 
       if KeyLogger._focused:
         for i in range(NUMBER_OF_KEYS):
@@ -36,7 +44,7 @@ class KeyLogger:
 
     KeyLogger._keyboard_state = {k["code"]: False for k in ALL_KEYS}
     KeyLogger._check_focus = FocusChecker()
-    KeyLogger._listener = Listener(on_press=on_press, on_release=on_release) # TODO: pynput doesn't change the key with capslock (and num-lock)
+    KeyLogger._listener = Listener(on_press=on_press, on_release=on_release)
     KeyLogger._listener.start()
 
   @staticmethod
@@ -48,13 +56,16 @@ class KeyLogger:
     KeyLogger._check_focus = None
     KeyLogger._focused = False
     KeyLogger._keyboard_state = {}
-  __del__ = stop
+
+  @staticmethod
+  def is_running():
+    return KeyLogger._listener and KeyLogger._listener.is_alive()
 
   @staticmethod
   def get_key(code):
     """Get state of a key (is pressed or not) with his keycode"""
 
-    if KeyLogger._listener is None: raise RuntimeError("KeyLogger not running")
+    if not KeyLogger.is_running(): raise RuntimeError("KeyLogger not running")
     elif type(code) != int: raise TypeError(f"keycode must be an integer, not {type(code).__name__}")
     elif code not in KeyLogger._keyboard_state: raise IndexError(f"key with code '{code}' not found")
     return KeyLogger._focused and KeyLogger._keyboard_state[code]
@@ -63,7 +74,9 @@ class KeyLogger:
   def set_key(code, is_pressed, add=False):
     """Set state of a key with his keycode"""
 
-    if KeyLogger._listener is None: raise RuntimeError("KeyLogger not running")
+    if not KeyLogger.is_running(): raise RuntimeError("KeyLogger not running")
     elif type(code) != int: raise TypeError(f"keycode must be an integer, not {type(code).__name__}")
     elif not add and code not in KeyLogger._keyboard_state: raise IndexError(f"key with code '{code}' not found")
     KeyLogger._keyboard_state[code] = bool(is_pressed)
+
+
