@@ -180,8 +180,10 @@ elif sys.platform.startswith("win"):
     def get_focussed_window(self):
       return ctypes.windll.user32.GetForegroundWindow()
     
+    registered_hooks = []
+    
     def window_exists(self, *wid):
-      # TODO: register a hook, instead
+      # TODO: register a hook, instead of search the window
       return True
 
 
@@ -272,7 +274,7 @@ elif sys.platform.startswith("linux"):
       # In some linux distributions Tkinter do not set window property '_NET_WM_PID'
       # So try to find the window with a less reliable method
       # EDIT: is in all linux distributions
-      # TODO: fix this
+      # EDIT2: Fixed in version 2.8 of kandinsky
       if not wid: wid = self._get_window(0, self.classnames_to_search[0], False, "kandinsky")
 
       return wid
@@ -300,6 +302,7 @@ elif sys.platform.startswith("linux"):
       return self.display.screen().root.get_full_property(self.display.get_atom('_NET_ACTIVE_WINDOW'), Xlib.X.AnyPropertyType).value[0]
     
     def window_exists(self, *wid):
+      # TODO: register a callback, instead if search the window, if possible
       return True
 
 

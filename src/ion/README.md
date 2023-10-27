@@ -8,6 +8,8 @@ This is a porting of the Numworks module, and add other methods created by other
 You can download it on [pypi.org](https://pypi.org/project/ion-numworks), download files of the [latest release](https://github.com/ZetaMap/Ion-numworks/releases/latest). <br>
 Or simply run this command to install library: ``pip install --pre ion-numworks``
 
+Also if you want to do it yourself, use this command to build and install the library automatically: ``python -m build && pip install .``
+
 ### More
 Also i created the [Kandinsky module of Numworks](https://github.com/ZetaMap/Kandinsky-Numworks)
 
