@@ -9,6 +9,7 @@ class KeyLogger:
   _check_focus = None
   _focused = False
   _keyboard_state = {}
+  _error = None
 
   @staticmethod
   def __init__():
@@ -19,13 +20,16 @@ class KeyLogger:
     if KeyLogger.is_running(): raise RuntimeError("KeyLogger already running")
 
     def on_press(key):
+      if key is None: return # because the key can be None in some cases
+
       print_debug("Pressed", key)
       if hasattr(key, "char"): key = key.char
       try: KeyLogger._focused = KeyLogger._check_focus()
-      except RuntimeError:
-        # kandinsky window and/or python console no longer exists
+      except BaseException as e:
+        # an error occurs while checking focus, so pass this error to the main thread
         KeyLogger.stop()
-        return
+        KeyLogger._error = e
+        return False
 
       if KeyLogger._focused:
         for i in range(NUMBER_OF_KEYS):
@@ -34,6 +38,8 @@ class KeyLogger:
             KeyLogger.set_key(ALL_KEYS[i]["code"], True)
 
     def on_release(key):
+      if key is None: return # because the key can be None is some cases
+
       print_debug("Released", key)
       if hasattr(key, "char"): key = key.char
 
@@ -42,10 +48,18 @@ class KeyLogger:
         if (k == key or (type(k) in (list, tuple) and any([i == key for i in k]))):
           KeyLogger.set_key(ALL_KEYS[i]["code"], False)
 
+    KeyLogger._error = None # remove errors
     KeyLogger._keyboard_state = {k["code"]: False for k in ALL_KEYS}
     KeyLogger._check_focus = FocusChecker()
     KeyLogger._listener = Listener(on_press=on_press, on_release=on_release)
     KeyLogger._listener.start()
+
+  @staticmethod
+  def raise_if_error():
+    if KeyLogger._error:
+      error = KeyLogger._error
+      KeyLogger._error = None # remove the last error after raised it
+      raise error
 
   @staticmethod
   def stop():
@@ -78,5 +92,3 @@ class KeyLogger:
     elif type(code) != int: raise TypeError(f"keycode must be an integer, not {type(code).__name__}")
     elif not add and code not in KeyLogger._keyboard_state: raise IndexError(f"key with code '{code}' not found")
     KeyLogger._keyboard_state[code] = bool(is_pressed)
-
-

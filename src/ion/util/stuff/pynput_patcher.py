@@ -1,5 +1,5 @@
 """
-Patch Pynput to add support of Caps Lock toggle.
+Patch Pynput to add support of Caps Lock modifier.
 """
 
 import sys, os
@@ -41,7 +41,6 @@ elif pynput_backend == "darwin":
 
 elif pynput_backend == "win32":
   # It's really poorly coded but it does the job, so I'm keeping it for now
-
   from pynput._util.win32 import KeyTranslator, VK, ctypes
   from pynput.keyboard._win32 import Listener
 
@@ -70,14 +69,22 @@ elif pynput_backend == "win32":
     """Wrap the method to add the check of caps lock"""
     shift, ctrl, alt = KeyTranslator__modifier_state_original(self)
     if Capslock.enabled: shift = not shift
-    return (shift, ctrl, alt)
+    return shift, ctrl, alt
   
   Listener._convert = Listener__convert
   KeyTranslator._modifier_state = KeyTranslator__modifier_state
 
 
 else: # linux/xorg backend
-  ...
+  # For linux, this is more simple, just need to redefine one function to handle caps lock bit-mask
+  import pynput.keyboard._xorg as xorg
+
+  def shift_to_index(display, shift):
+    return (          # |added thing|
+        (1 if shift & 1 or shift & 3 else 0) +
+        (2 if shift & xorg.alt_gr_mask(display) else 0))
+
+  xorg.shift_to_index = shift_to_index
 
                                                                                                             
                                                                                                             
@@ -92,4 +99,4 @@ else: # linux/xorg backend
                                                                                                             
                                                                                                             
                                                                                                             
-                                                                                           
+                                                         

@@ -50,6 +50,7 @@ class Ion:
   def call(method, *args, **kwargs):
     try:
       print_debug("Event", method.__name__, (*args, *[f"{k}={repr(v)}" for k, v in kwargs.items()]), sep='')
+      KeyLogger.raise_if_error() # raise the KeyLogger error to main thread
       return method(*args, **kwargs), None
     except BaseException as e:
       return None, Exception.with_traceback(

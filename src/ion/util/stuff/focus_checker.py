@@ -120,14 +120,12 @@ class IFocusChecker:
     raise NotImplementedError
   
   def window_exists(self, *wid):
-    return True
     raise NotImplementedError
 
 # Fake FocusChecker class, will always return True
 class NoopFocusChecker(IFocusChecker):
   def __init__(self): return
   def __call__(self): return True
-
 
 
 if GET_INPUT_EVERYWHERE:
@@ -181,6 +179,10 @@ elif sys.platform.startswith("win"):
 
     def get_focussed_window(self):
       return ctypes.windll.user32.GetForegroundWindow()
+    
+    def window_exists(self, *wid):
+      # TODO: register a hook, instead
+      return True
 
 
 elif sys.platform.startswith("linux"):
@@ -296,6 +298,9 @@ elif sys.platform.startswith("linux"):
       # remove the resource warning
       if ("ignore", None, ResourceWarning, None, 0) not in warnings.filters: warnings.simplefilter("ignore", ResourceWarning)
       return self.display.screen().root.get_full_property(self.display.get_atom('_NET_ACTIVE_WINDOW'), Xlib.X.AnyPropertyType).value[0]
+    
+    def window_exists(self, *wid):
+      return True
 
 
 elif sys.platform.startswith("darwin"):
@@ -339,6 +344,9 @@ elif sys.platform.startswith("darwin"):
         if win['kCGWindowOwnerPID'] == front_app_pid:
           return win['kCGWindowNumber']
       return 0 # cannot happening
+    
+    def window_exists(self, *wid):
+      return True
 
 
 else:
@@ -346,4 +354,4 @@ else:
   # The 'focus on only window' will be disabled
   prettywarn(f"platform {sys.platform!r} not supported for inputs only in focussed window. "
               "Inputs will be gets on entire system", ImportWarning)
-  FocusChecker = NoopFocusCheck
+  FocusChecker = NoopFocusChecker
