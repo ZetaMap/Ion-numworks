@@ -129,7 +129,7 @@ os.environ['ION_OS_MODE'] = '<number>'
 * Enable debug mode:
 ```python
 # Print full error stacktrace, the original pressed key and methods calls
-os.eviron['ION_ENABLE_DEBUG'] = ''
+os.environ['ION_ENABLE_DEBUG'] = ''
 ```
 
 * Disable reading inputs only in kandinsky window (if kandinsky is not imported globally, this option is enabled by default):

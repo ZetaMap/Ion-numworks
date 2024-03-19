@@ -15,6 +15,7 @@ class IFocusChecker:
     - search_window(pid, classname, not_classname, contains_title)
     - get_focussed_window()
     - get_ppid_of_pid(pid)
+    - window_exists(wid)
 
   following variables must be redefined:
     - classnames_to_search
@@ -47,7 +48,7 @@ class IFocusChecker:
         return
 
     if self.python_window_id == 0:
-      # Find python cosole window and ignore the top level of tkinter
+      # Find python console window and ignore the top level of tkinter
       self.python_window_id = self.bind_python_console()
 
       if self.python_window_id == 0:
