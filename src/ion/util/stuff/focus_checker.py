@@ -7,7 +7,7 @@ USE_KANDINSKY_INPUT_ONLY = 'ION_DISABLE_KANDINSKY_INPUT_ONLY' not in os.environ
 GET_INPUT_EVERYWHERE = 'ION_ENABLE_GET_INPUT_EVERYWHERE' in os.environ
 
 
-class IFocusChecker:
+class AbstractFocusChecker:
   """
   Base class for FocusChecker
 
@@ -37,12 +37,13 @@ class IFocusChecker:
       # To find kandinsky is more simple, no need to find parent processes with a valid window
       self.kandinsky_window_id = self.bind_kandinsky_window()
 
-      if self.kandinsky_window_id == 0 and not self.kandinsky_not_found_error_printed:
-        # Kandinsky window not found
-        prettywarn("could not find the kandinsky window to get inputs.", RuntimeWarning)
-        self.kandinsky_not_found_error_printed = True
-      else: print_debug("FocusChecker", f"found the window '{self.kandinsky_window_id}' as kandinsky")
-
+      if self.kandinsky_window_id == 0:
+        if not self.kandinsky_not_found_error_printed: 
+          # Kandinsky window not found
+          prettywarn("could not find the kandinsky window to get inputs.", RuntimeWarning)
+          self.kandinsky_not_found_error_printed = True
+        else: print_debug("FocusChecker", f"found the window '{self.kandinsky_window_id}' as kandinsky")
+         
       if USE_KANDINSKY_INPUT_ONLY:
         self.python_window_id = 0
         return
@@ -124,7 +125,7 @@ class IFocusChecker:
     raise NotImplementedError
 
 # Fake FocusChecker class, will always return True
-class NoopFocusChecker(IFocusChecker):
+class NoopFocusChecker(AbstractFocusChecker):
   def __init__(self): return
   def __call__(self): return True
 
@@ -136,7 +137,7 @@ if GET_INPUT_EVERYWHERE:
 elif sys.platform.startswith("win"):
   import ctypes
 
-  class FocusChecker(IFocusChecker):
+  class FocusChecker(AbstractFocusChecker):
     # 'TkTopLevel' is the class name of root tkinter window, 'pygame' because in old releases of kandinsky i used pygame
     classnames_to_search = ("TkTopLevel", "pygame")
 
@@ -215,9 +216,9 @@ elif sys.platform.startswith("linux"):
   # TODO: complete support of wayland
   is_wayland = graphical_server_type == "wayland"
 
-  class FocusChecker(IFocusChecker):
+  class FocusChecker(AbstractFocusChecker):
     # Use sys.argv[0] because the window classname of pygame if file name of script
-    classnames_to_search = ("Tk", IFocusChecker.script_filename)
+    classnames_to_search = ("Tk", AbstractFocusChecker.script_filename)
 
     def __init__(self):
       self.display = Xlib.display.Display()
@@ -315,7 +316,7 @@ elif sys.platform.startswith("darwin"):
     e.msg = "pyobjc module and the Quartz extension are not installed. Please install it with command 'pip install pyobjc-core pyobjc-framework-Quartz'"
     raise
 
-  class FocusChecker(IFocusChecker):
+  class FocusChecker(AbstractFocusChecker):
     classnames_to_search = ("Tk", "pygame")
     #CGWindowListCreateDescriptionFromArray 
     def search_window(self, pid=0, classname=None, not_classname=False, contains_title=None):

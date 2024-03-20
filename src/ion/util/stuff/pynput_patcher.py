@@ -85,18 +85,3 @@ else: # linux/xorg backend
         (2 if shift & xorg.alt_gr_mask(display) else 0))
 
   xorg.shift_to_index = shift_to_index
-
-                                                                                                            
-                                                                                                            
-                                                                                                            
-                                                                                                            
-                
-                                                                                                            
-                                                                                                            
-                                                                                                            
-                                                                                                            
-                
-                                                                                                            
-                                                                                                            
-                                                                                                            
-                                                         

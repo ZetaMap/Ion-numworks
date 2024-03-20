@@ -13,14 +13,15 @@ OS_MODE = environ.get('KANDINSKY_OS_MODE') or environ.get('ION_OS_MODE')
 OS_MODE = (int(OS_MODE) if 0 <= int(OS_MODE) < 4 else 1) if OS_MODE and OS_MODE.isdecimal() else 1
 
 # Check version of kandinsky to print an warning if is 'too old'
-import pkg_resources
 try:
-  if tuple([int(i) for i in pkg_resources.get_distribution("kandinsky").version.split('.') if i.isdecimal()]) < (2, 5):
-    prettywarn("for more stability, is recommended to upgrade Kandinsky", DeprecationWarning)
-except pkg_resources.DistributionNotFound: pass
-
-# Cleanup
-del environ, pkg_resources
+  import importlib.metadata
+  kandinsky_version = importlib.metadata.metadata("kandinsky").get_all("version")
+  if kandinsky_version is None:
+    prettywarn("invalid kandinsky metadata, are you sure the right library is installed?", DeprecationWarning)
+  elif tuple([int(i) for i in kandinsky_version.split('.') if i.isdecimal()]) < (2, 5):
+    prettywarn("for more stability, is recommended to upgrade kandinsky", DeprecationWarning)
+  del importlib
+except Exception: pass
 
 
 __all__ = ["Ion"]
