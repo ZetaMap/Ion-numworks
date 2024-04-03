@@ -36,7 +36,7 @@ elif pynput_backend == "uinput":
 
 
 elif pynput_backend == "darwin":
-  ...
+  raise NotImplementedError("library not fully available for MacOS now")
 
 
 elif pynput_backend == "win32":

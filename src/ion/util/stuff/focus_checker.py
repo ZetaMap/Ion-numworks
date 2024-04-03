@@ -1,13 +1,14 @@
+from keyboard import unhook
 from .common import prettywarn, print_debug
 import sys, os, subprocess
 
 # By default it just read kandinsky window (only if is focused)
-USE_KANDINSKY_INPUT_ONLY = 'ION_DISABLE_KANDINSKY_INPUT_ONLY' not in os.environ
+DISABLE_KANDINSKY_INPUT_ONLY = 'ION_DISABLE_KANDINSKY_INPUT_ONLY' not in os.environ
 # Option to get input everywhere on system
 GET_INPUT_EVERYWHERE = 'ION_ENABLE_GET_INPUT_EVERYWHERE' in os.environ
 
 
-class AbstractFocusChecker:
+class BaseFocusChecker:
   """
   Base class for FocusChecker
 
@@ -24,6 +25,7 @@ class AbstractFocusChecker:
   kandinsky_window_id = 0
   kandinsky_not_found_error_printed = False
   python_window_id = 0
+  python_not_found_error_printed = False
   script_pid = os.getpid()
   # used for a more specific search
   script_filename = os.path.basename(sys.argv[0])
@@ -31,52 +33,62 @@ class AbstractFocusChecker:
   classnames_to_search = None
 
   def __init__(self):
-    if self.classnames_to_search is None: raise NameError(".classnames_to_search must be defined")
+    if self.classnames_to_search is None: raise NameError(".classnames_to_search must be overrided")
+    self.bind_windows()
+    self.register_window_callbacks()
 
+  def __call__(self, just_check=False):
+    # check if windows still exists, to stop the KeyLogger properly
+    self.check_windows_availability()
+    if just_check: return False
+    
+    self.bind_windows()
+    focussed = self.get_focussed_window()
+
+    return ((self.python_window_id and focussed == self.python_window_id) or
+            (self.kandinsky_window_id and focussed == self.kandinsky_window_id))
+
+  def bind_windows(self):
+    # Verify is kandinsky is imported
     if self.kandinsky_window_id == 0 and "kandinsky" in sys.modules:
       # To find kandinsky is more simple, no need to find parent processes with a valid window
-      self.kandinsky_window_id = self.bind_kandinsky_window()
+      self.kandinsky_window_id = self.get_kandinsky_window()
 
       if self.kandinsky_window_id == 0:
-        if not self.kandinsky_not_found_error_printed: 
-          # Kandinsky window not found
+        # Kandinsky window not found
+        if not self.kandinsky_not_found_error_printed:
           prettywarn("could not find the kandinsky window to get inputs.", RuntimeWarning)
           self.kandinsky_not_found_error_printed = True
-        else: print_debug("FocusChecker", f"found the window '{self.kandinsky_window_id}' as kandinsky")
-         
-      if USE_KANDINSKY_INPUT_ONLY:
-        self.python_window_id = 0
-        return
+      else: print_debug("FocusChecker", f"found the window '{self.kandinsky_window_id}' as kandinsky")
 
-    if self.python_window_id == 0:
+
+    if DISABLE_KANDINSKY_INPUT_ONLY and self.python_window_id == 0:
       # Find python console window and ignore the top level of tkinter
-      self.python_window_id = self.bind_python_console()
+      self.python_window_id = self.get_python_console_window()
 
       if self.python_window_id == 0:
         # No valid (parent) window found!
         # Python probably started in no-shell-mode and/or by a task
         # So will not log python console inputs
-        prettywarn("cannot find an valid window to get inputs from python console.", RuntimeWarning)
+        if not self.python_not_found_error_printed:
+          prettywarn("cannot find an valid window to get inputs from python console.", RuntimeWarning)
+          self.python_not_found_error_printed = True
       else: print_debug("FocusChecker", f"found the window '{self.python_window_id}' as python console")
 
-  def __call__(self):
-    # Verify is kandinsky is imported, for the first true test (if no error) this will re-init FocusChecker
-    if self.kandinsky_window_id == 0 and "kandinsky" in sys.modules: self.__init__()
-
-    focussed = self.get_focussed_window()
-    is_focussed = ((self.python_window_id and focussed == self.python_window_id) or
-            (self.kandinsky_window_id and focussed == self.kandinsky_window_id))
-    
-    # check if kandinsky window still exist, to stop the KeyLogger properly
-    if not is_focussed and self.kandinsky_window_id and not self.window_exists(self.kandinsky_window_id):
+  def check_windows_availability(self):
+    if self.kandinsky_window_id == -1:
       raise RuntimeError(f"Kandinsky window destroyed. Cannot locate it.")
+    if self.python_window_id == -1:
+      raise RuntimeError(f"Python console window destroyed. Cannot locate it.")
 
-    return is_focussed
+  def check_window(self, wid, pid=0, classname=None, not_classname=False, contains_title=None):
+    raise NotImplementedError
 
   def search_window(self, pid=0, classname=None, not_classname=False, contains_title=None):
     raise NotImplementedError
 
-  def _get_window(self, pid=0, classname=None, not_classname=False, contains_title=None):
+  def get_window(self, pid=0, classname=None, not_classname=False, contains_title=None, wid=0):
+    if type(wid) != int: raise ValueError("invalid wid")
     if type(pid) != int or pid < 0: raise ValueError("invalid pid")
     if not pid and not classname and not contains_title: raise ValueError("pid, classname or contains_title must be specified")
     if classname:
@@ -87,25 +99,26 @@ class AbstractFocusChecker:
       if type(contains_title) != str: raise TypeError("invalid type for contains_title")
       contains_title = contains_title.lower()
 
-    return self.search_window(pid, classname, not_classname, contains_title)
+    if wid == 0: return self.search_window(pid, classname, not_classname, contains_title)
+    return wid if self.check_window(wid, pid, classname, not_classname, contains_title) else 0
 
   def get_ppid(self, pid):
     raise NotImplementedError
 
-  def bind_kandinsky_window(self):
-    return self._get_window(self.script_pid, self.classnames_to_search, False, "kandinsky")
+  def get_kandinsky_window(self, wid=0):
+    return self.get_window(self.script_pid, self.classnames_to_search, False, "kandinsky", wid)
 
-  def bind_python_console(self):
-      wid = self._get_window(self.script_pid, self.classnames_to_search, True, self.script_filename)
-      if wid == 0: wid = self._get_window(self.script_pid, self.classnames_to_search, True)
+  def get_python_console_window(self, wid=0):
+      wid = self.get_window(self.script_pid, self.classnames_to_search, True, self.script_filename, wid)
+      if wid == 0: wid = self.get_window(self.script_pid, self.classnames_to_search, True, wid=wid)
 
       if wid == 0:
         # Python probably started by another process, in this mode, python don't have 'real' window
         # So try going back in the parent processes to find a valid window
         ppid = os.getppid()
         for _ in range(20): # Loop limit to avoid infinite loop
-          wid = self._get_window(ppid, self.classnames_to_search, True, self.script_filename)
-          if wid == 0: wid = self._get_window(ppid, self.classnames_to_search, True)
+          wid = self.get_window(ppid, self.classnames_to_search, True, self.script_filename, wid)
+          if wid == 0: wid = self.get_window(ppid, self.classnames_to_search, True, wid=wid)
 
           # Found an valid window
           if wid: break
@@ -120,49 +133,57 @@ class AbstractFocusChecker:
 
   def get_focussed_window(self):
     raise NotImplementedError
-  
-  def window_exists(self, *wid):
-    raise NotImplementedError
+
+  def register_window_callbacks(self):
+    return
 
 # Fake FocusChecker class, will always return True
-class NoopFocusChecker(AbstractFocusChecker):
+class NoopFocusChecker(BaseFocusChecker):
   def __init__(self): return
-  def __call__(self): return True
+  def __call__(self, just_check=False): return True
 
 
 if GET_INPUT_EVERYWHERE:
-  FocusChecker = NoopFocusChecker
+  class FocusChecker(NoopFocusChecker): ...
 
 
 elif sys.platform.startswith("win"):
-  import ctypes
+  import ctypes, ctypes.wintypes, time
+  from threading import Thread
 
-  class FocusChecker(AbstractFocusChecker):
+  class FocusChecker(BaseFocusChecker):
     # 'TkTopLevel' is the class name of root tkinter window, 'pygame' because in old releases of kandinsky i used pygame
     classnames_to_search = ("TkTopLevel", "pygame")
+
+    def check_window(self, wid, pid=0, classname=None, not_classname=False, contains_title=None):
+      if pid == 0: raise ValueError("a pid is needed")
+
+      lpdw = ctypes.c_uint()
+      ctypes.windll.user32.GetWindowThreadProcessId(wid, ctypes.byref(lpdw))
+
+      if lpdw.value == pid and ctypes.windll.user32.IsWindowVisible(wid):
+        if classname:
+          buff = ctypes.create_unicode_buffer(256)
+          ctypes.windll.user32.GetClassNameW(wid, buff)
+
+          if not ((not_classname and any([buff.value != name for name in classname])) or
+              (not not_classname and any([buff.value == name for name in classname]))):
+            return False
+
+        if contains_title:
+          buff = ctypes.create_unicode_buffer(256)
+          ctypes.windll.user32.GetWindowTextW(wid, buff, 256)
+
+          if contains_title not in buff.value.lower(): 
+            return False
+        return True
+      return False
 
     def search_window(self, pid=0, classname=None, not_classname=False, contains_title=None):
       if pid == 0: raise ValueError("a pid is needed")
 
       def foreach_window(hwnd, _):
-        lpdw = ctypes.c_uint()
-        ctypes.windll.user32.GetWindowThreadProcessId(hwnd, ctypes.byref(lpdw))
-
-        if lpdw.value == pid and ctypes.windll.user32.IsWindowVisible(hwnd):
-          if classname:
-            buff = ctypes.create_unicode_buffer(256)
-            ctypes.windll.user32.GetClassNameW(hwnd, buff)
-
-            if not ((not_classname and any([buff.value != name for name in classname])) or
-                (not not_classname and any([buff.value == name for name in classname]))):
-              return True
-
-          if contains_title:
-            buff = ctypes.create_unicode_buffer(256)
-            ctypes.windll.user32.GetWindowTextW(hwnd, buff, 256)
-
-            if contains_title not in buff.value.lower(): return True
-
+        if self.check_window(hwnd, pid, classname, not_classname, contains_title):
           window.value = hwnd
           return False
         return True
@@ -171,22 +192,65 @@ elif sys.platform.startswith("win"):
       ctypes.windll.user32.EnumWindows(ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_uint, ctypes.c_uint)(foreach_window), 0)
       return window.value
 
+    def register_window_callbacks(self):
+      def window_state(hWinEventHook, event, hwnd, idObject, idChild, dwEventThread, dwmsEventTime):
+        if hwnd == self.kandinsky_window_id: self.kandinsky_window_id = -1
+        elif hwnd == self.python_window_id: self.python_window_id = -1
+
+      def register_hook():
+        hook = ctypes.WINFUNCTYPE(
+          ctypes.wintypes.HANDLE,
+          ctypes.wintypes.HANDLE,
+          ctypes.wintypes.DWORD,
+          ctypes.wintypes.HWND,
+          ctypes.wintypes.LONG,
+          ctypes.wintypes.LONG,
+          ctypes.wintypes.DWORD,
+          ctypes.wintypes.DWORD
+        )(window_state)
+        search_windows = True
+        hook_id = ctypes.windll.user32.SetWinEventHook(0x8001, 0x8001, None, hook, 0, 0, 0)
+
+        if hook_id:
+          msg = ctypes.wintypes.MSG()
+          while (self.kandinsky_window_id != -1 or 
+                 (DISABLE_KANDINSKY_INPUT_ONLY and self.python_window_id != -1)):
+            time.sleep(0.01)
+            r = ctypes.windll.user32.PeekMessageW(ctypes.byref(msg), None, 0, 0, 0)
+
+            if r == 0:
+              ctypes.windll.user32.TranslateMessage(msg)
+              ctypes.windll.user32.DispatchMessageW(msg)
+            elif r <=0 or msg.message == 0x0401: 
+              prettywarn("window create/destroy detector has been broken", RuntimeWarning)
+              break
+
+            if search_windows:
+              #print(self.kandinsky_window_id, self.python_window_id)
+              # TODO: handle properly the case of both are enabled, and kandinsky never been imported
+              if self.kandinsky_window_id == 0:
+                self.kandinsky_window_id = self.get_kandinsky_window()
+              elif DISABLE_KANDINSKY_INPUT_ONLY and self.python_window_id == 0:
+                self.python_window_id = self.get_python_console_window() 
+              else: search_windows = False
+
+          ctypes.windll.user32.UnhookWinEvent(hook_id)
+        else: prettywarn("cannot hook the window create/destroy detector", RuntimeWarning)
+
+
+      self.thread = Thread(name="WindowCreateDestroyDetector", target=register_hook, daemon=True)
+      self.thread.start()
+
     def get_ppid(self, pid):
       # Use 'wmic' command to get ppid of process
-      try: result = [i.strip() for i in subprocess.check_output(f"wmic process where ProcessId={pid} get ParentProcessId".split(' ')).decode().splitlines() if i.strip() != '']
+      try: result = [i.strip() for i in subprocess.check_output(f"wmic process where ProcessId={pid} get ParentProcessId".split(' '), stderr=subprocess.PIPE).decode().splitlines() if i.strip() != '']
       except subprocess.CalledProcessError: return -1
 
-      if len(result) == 1: return -2
+      if len(result) < 2: return -2
       return int(result[1].strip())
 
     def get_focussed_window(self):
       return ctypes.windll.user32.GetForegroundWindow()
-    
-    registered_hooks = []
-    
-    def window_exists(self, *wid):
-      # TODO: register a hook, instead of search the window
-      return True
 
 
 elif sys.platform.startswith("linux"):
@@ -216,9 +280,9 @@ elif sys.platform.startswith("linux"):
   # TODO: complete support of wayland
   is_wayland = graphical_server_type == "wayland"
 
-  class FocusChecker(AbstractFocusChecker):
+  class FocusChecker(BaseFocusChecker):
     # Use sys.argv[0] because the window classname of pygame if file name of script
-    classnames_to_search = ("Tk", AbstractFocusChecker.script_filename)
+    classnames_to_search = ("Tk", BaseFocusChecker.script_filename)
 
     def __init__(self):
       self.display = Xlib.display.Display()
@@ -236,6 +300,9 @@ elif sys.platform.startswith("linux"):
       if p is None: return None
       return p.value[0]
 
+    def check_window(self, wid, pid=0, classname=None, not_classname=False, contains_title=None):
+      ...
+
     def search_window(self, pid=0, classname=None, not_classname=False, contains_title=None):
       wins = [self.display.screen().root] # should loop over all screens
 
@@ -244,7 +311,7 @@ elif sys.platform.startswith("linux"):
         try:
           wpid = self.get_wm_pid(win)
 
-          if (True if pid == 0 else (wpid and pid == wpid)) and win.get_attributes().map_state == Xlib.X.IsViewable:
+          if (pid == 0 or (wpid and pid == wpid)) and win.get_attributes().map_state == Xlib.X.IsViewable:
             found = True
 
             if found and classname:
@@ -256,7 +323,7 @@ elif sys.platform.startswith("linux"):
             if found and contains_title:
               wtitle = win.get_wm_name()
               # check the value because some window return an empty title with this method
-              if wtitle == b'': 
+              if wtitle == b'':
                 wtitle = win.get_full_property(self.display.get_atom('_NET_WM_NAME'), Xlib.X.AnyPropertyType)
                 if wtitle: wtitle = wtitle.value.decode()
               if not wtitle or contains_title not in wtitle.lower(): found = False
@@ -270,30 +337,35 @@ elif sys.platform.startswith("linux"):
         except Xlib.error.ConnectionClosedError: break # connection closed, no need to continue to search the window
       return 0
 
-    def bind_kandinsky_window(self):
-      wid = super().bind_kandinsky_window()
+    def register_window_callbacks(self):
+      def callback():
+        ...
+      Xlib
 
-      # In some linux distributions Tkinter do not set window property '_NET_WM_PID'
-      # So try to find the window with a less reliable method
+    def get_kandinsky_window(self, wid=0):
+      wid = super().get_kandinsky_window(wid)
+
+      # In some linux distributions, Tkinter do not set window property '_NET_WM_PID'.
+      # So try to find the window with a less reliable method.
       # EDIT: is in all linux distributions
-      # EDIT2: Fixed in version 2.8 of kandinsky
-      if not wid: wid = self._get_window(0, self.classnames_to_search[0], False, "kandinsky")
+      # EDIT2: Fixed in version 2.7.1 of kandinsky
+      if not wid: wid = self.get_window(0, self.classnames_to_search[0], False, "kandinsky", wid)
 
       return wid
 
-    def bind_python_console(self):
+    def get_python_console_window(self, wid=0):
       # Check if is wayland because we cannot locate all windows due to "security reasons"
       if is_wayland and not self.kandinsky_not_found_error_printed:
-        prettywarn("Wayland (used by GNOME/Ubuntu or KDE) is not fully supported. "
+        prettywarn("Wayland (used by GNOME, Ubuntu or KDE) is not fully supported. "
                    "The python console window will probably not be localized correctly. "
                    "To avoid this problem, start your session in X11 mode.", UserWarning)
 
-      return super().bind_python_console()
+      return super().get_python_console_window(wid)
 
     def get_ppid(self, pid):
       try: result = subprocess.check_output(f"ps -o ppid= {pid}".split(' ')).decode().strip()
       except subprocess.CalledProcessError: return -1
-      
+
       # check the return value
       if not result: return -2
       return int(result)
@@ -302,10 +374,6 @@ elif sys.platform.startswith("linux"):
       # remove the resource warning
       if ("ignore", None, ResourceWarning, None, 0) not in warnings.filters: warnings.simplefilter("ignore", ResourceWarning)
       return self.display.screen().root.get_full_property(self.display.get_atom('_NET_ACTIVE_WINDOW'), Xlib.X.AnyPropertyType).value[0]
-    
-    def window_exists(self, *wid):
-      # TODO: register a callback, instead if search the window, if possible
-      return True
 
 
 elif sys.platform.startswith("darwin"):
@@ -316,9 +384,9 @@ elif sys.platform.startswith("darwin"):
     e.msg = "pyobjc module and the Quartz extension are not installed. Please install it with command 'pip install pyobjc-core pyobjc-framework-Quartz'"
     raise
 
-  class FocusChecker(AbstractFocusChecker):
+  class FocusChecker(BaseFocusChecker):
     classnames_to_search = ("Tk", "pygame")
-    #CGWindowListCreateDescriptionFromArray 
+    #CGWindowListCreateDescriptionFromArray
     def search_window(self, pid=0, classname=None, not_classname=False, contains_title=None):
       for win in CGWindowListCopyWindowInfo(kCGWindowListOptionOnScreenOnly, kCGNullWindowID):
         if pid == 0 or win['kCGWindowOwnerPID'] == pid:
@@ -338,7 +406,7 @@ elif sys.platform.startswith("darwin"):
     def get_ppid(self, pid):
       try: result = subprocess.check_output(f"ps -o ppid= {pid}".split(' ')).decode().strip()
       except subprocess.CalledProcessError: return -1
-      
+
       # check the return value
       if not result: return -2
       return int(result)
@@ -349,9 +417,6 @@ elif sys.platform.startswith("darwin"):
         if win['kCGWindowOwnerPID'] == front_app_pid:
           return win['kCGWindowNumber']
       return 0 # cannot happening
-    
-    def window_exists(self, *wid):
-      return True
 
 
 else:
@@ -359,4 +424,4 @@ else:
   # The 'focus on only window' will be disabled
   prettywarn(f"platform {sys.platform!r} not supported for inputs only in focussed window. "
               "Inputs will be gets on entire system", ImportWarning)
-  FocusChecker = NoopFocusChecker
+  class FocusChecker(NoopFocusChecker): ...

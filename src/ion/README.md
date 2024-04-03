@@ -132,6 +132,12 @@ os.environ['ION_OS_MODE'] = '<number>'
 os.environ['ION_ENABLE_DEBUG'] = ''
 ```
 
+* Disable warnings:
+```python
+# Will be disable all ion warnings
+os.environ['ION_DISABLE_WARNINGS'] = ''
+```
+
 * Disable reading inputs only in kandinsky window (if kandinsky is not imported globally, this option is enabled by default):
 ```python
 # This options allow to read keyboard inputs in python console and kandinsky window

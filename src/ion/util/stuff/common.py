@@ -1,9 +1,15 @@
 import warnings
 warnings.filters = [] # Reset filters because some default appear in, and HIS DON'T PRINT MY WARNINGS!!
 
+WARNINGS = False
+def set_warnings(enabled):
+  global WARNINGS
+  WARNINGS = enabled
+
 # prettywarn method of pysdl2
 def prettywarn(message, warntype=None):
   """Prints a suppressable warning without stack or line info."""
+  if not WARNINGS: return
   original = warnings.formatwarning
   warnings.formatwarning = lambda message, category, *_: f"{category.__name__}: {message}\n"
   warnings.warn(message, warntype)

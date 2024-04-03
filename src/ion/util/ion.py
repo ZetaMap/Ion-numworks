@@ -1,12 +1,18 @@
 from os import environ
 from random import randint, random
+
 from .stuff.keylogger import *
 from .stuff.keys import ALL_KEYS
 from .stuff.common import *
 
+
 # Enable debug
 DEBUG = "ION_ENABLE_DEBUG" in environ
 set_debug(DEBUG)
+
+# Disable warnings
+WARNINGS = "ION_DISABLE_WARNINGS" not in environ
+set_warnings(WARNINGS)
 
 # '0': PC, '1': Numworks, '2': Omega, '3': Upsilon
 OS_MODE = environ.get('KANDINSKY_OS_MODE') or environ.get('ION_OS_MODE')
@@ -18,10 +24,10 @@ try:
   kandinsky_version = importlib.metadata.metadata("kandinsky").get_all("version")
   if kandinsky_version is None:
     prettywarn("invalid kandinsky metadata, are you sure the right library is installed?", DeprecationWarning)
-  elif tuple([int(i) for i in kandinsky_version.split('.') if i.isdecimal()]) < (2, 5):
+  elif tuple([int(i) for i in kandinsky_version[0].split('.') if i.isdecimal()]) < (2, 5):
     prettywarn("for more stability, is recommended to upgrade kandinsky", DeprecationWarning)
   del importlib
-except Exception: pass
+except: pass
 
 
 __all__ = ["Ion"]
@@ -51,7 +57,7 @@ class Ion:
   def call(method, *args, **kwargs):
     try:
       print_debug("Event", method.__name__, (*args, *[f"{k}={repr(v)}" for k, v in kwargs.items()]), sep='')
-      KeyLogger.raise_if_error() # raise the KeyLogger error to main thread
+      KeyLogger.raise_if_error() # raise the last KeyLogger error to main thread
       return method(*args, **kwargs), None
     except BaseException as e:
       return None, Exception.with_traceback(

@@ -1,8 +1,10 @@
 from pynput.keyboard import Listener
+
 from .pynput_patcher import *
 from .keys import ALL_KEYS, NUMBER_OF_KEYS
 from .focus_checker import FocusChecker
 from .common import print_debug
+
 
 class KeyLogger:
   _listener: Listener = None
@@ -15,8 +17,9 @@ class KeyLogger:
   def __init__():
     """
     Start the KeyLogger.
-    This is a global instance, so the constructor cannot be called again until after calling .stop().
+    This is an singleton, so the constructor cannot be called again until after calling .stop().
     """
+
     if KeyLogger.is_running(): raise RuntimeError("KeyLogger already running")
 
     def on_press(key):
@@ -56,15 +59,30 @@ class KeyLogger:
 
   @staticmethod
   def raise_if_error():
+    """Raise the last error"""
+
     if KeyLogger._error:
       error = KeyLogger._error
       KeyLogger._error = None # remove the last error after raised it
       raise error
 
   @staticmethod
+  def check_ok(code):
+    """Check the focus, the Keylogger and the keycode"""
+
+    try: KeyLogger._check_focus(True)
+    except:
+      KeyLogger.stop()
+      raise
+    if not KeyLogger.is_running(): raise RuntimeError("KeyLogger not running")
+    elif type(code) != int: raise TypeError(f"keycode must be an integer, not {type(code).__name__}")
+    elif code not in KeyLogger._keyboard_state: raise IndexError(f"key with code '{code}' not found")
+
+  @staticmethod
   def stop():
     """Stop the KeyLogger"""
 
+    if not KeyLogger.is_running(): return
     if KeyLogger._listener: KeyLogger._listener.stop()
     KeyLogger._listener = None
     KeyLogger._check_focus = None
@@ -73,22 +91,20 @@ class KeyLogger:
 
   @staticmethod
   def is_running():
+    """Return whether the KeyLogger is running"""
+    
     return KeyLogger._listener and KeyLogger._listener.is_alive()
 
   @staticmethod
   def get_key(code):
     """Get state of a key (is pressed or not) with his keycode"""
 
-    if not KeyLogger.is_running(): raise RuntimeError("KeyLogger not running")
-    elif type(code) != int: raise TypeError(f"keycode must be an integer, not {type(code).__name__}")
-    elif code not in KeyLogger._keyboard_state: raise IndexError(f"key with code '{code}' not found")
+    KeyLogger.check_ok(code)
     return KeyLogger._focused and KeyLogger._keyboard_state[code]
 
   @staticmethod
   def set_key(code, is_pressed, add=False):
     """Set state of a key with his keycode"""
 
-    if not KeyLogger.is_running(): raise RuntimeError("KeyLogger not running")
-    elif type(code) != int: raise TypeError(f"keycode must be an integer, not {type(code).__name__}")
-    elif not add and code not in KeyLogger._keyboard_state: raise IndexError(f"key with code '{code}' not found")
+    KeyLogger.check_ok(code)
     KeyLogger._keyboard_state[code] = bool(is_pressed)

@@ -35,7 +35,7 @@ setup(
     'License :: OSI Approved :: MIT License',
     'Operating System :: Microsoft :: Windows',
     'Operating System :: Unix',
-    'Operating System :: MacOS :: MacOS X',
+#    'Operating System :: MacOS :: MacOS X', # not fully available for MacOS now
   ],
   package_dir={"": "src"},
   packages=[
