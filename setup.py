@@ -13,14 +13,14 @@ def clean_pycache(path="."):
         else: os.system("rm -rf \"" + new_path.replace('\\', '/') + "\"")
       else: clean_pycache(new_path)
 
-with open("src/ion/README.md", "r", encoding="utf-8") as f:
+with open("src/ion/README.md", "rt", encoding="utf-8") as f:
   long_description = f.read()
   with open("README.md", "wt", encoding="utf-8") as f: f.write(long_description)
 
 clean_pycache(__file__[:__file__.rfind("\\")+1 or __file__.rfind("/")+1])
 setup(
   name="ion-numworks",
-  version="2.0.dev4",
+  version="2.0.dev5",
   author="ZetaMap",
   description="The porting of 'Ion module, from Numworks, for PC.",
   license='MIT',
@@ -35,7 +35,7 @@ setup(
     'License :: OSI Approved :: MIT License',
     'Operating System :: Microsoft :: Windows',
     'Operating System :: Unix',
-#    'Operating System :: MacOS :: MacOS X', # not fully available for MacOS now
+#    'Operating System :: MacOS :: MacOS X', # not fully compatible
   ],
   package_dir={"": "src"},
   packages=[

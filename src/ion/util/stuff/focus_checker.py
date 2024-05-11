@@ -1,9 +1,8 @@
-from keyboard import unhook
 from .common import prettywarn, print_debug
 import sys, os, subprocess
 
 # By default it just read kandinsky window (only if is focused)
-DISABLE_KANDINSKY_INPUT_ONLY = 'ION_DISABLE_KANDINSKY_INPUT_ONLY' not in os.environ
+DISABLE_KANDINSKY_INPUT_ONLY = 'ION_DISABLE_KANDINSKY_INPUT_ONLY' in os.environ
 # Option to get input everywhere on system
 GET_INPUT_EVERYWHERE = 'ION_ENABLE_GET_INPUT_EVERYWHERE' in os.environ
 
@@ -49,6 +48,19 @@ class BaseFocusChecker:
             (self.kandinsky_window_id and focussed == self.kandinsky_window_id))
 
   def bind_windows(self):
+    if (DISABLE_KANDINSKY_INPUT_ONLY or self.kandinsky_window_id == 0) and self.python_window_id == 0:
+      # Find python console window and ignore the top level of tkinter
+      self.python_window_id = self.get_python_console_window()
+
+      if self.python_window_id == 0:
+        # No valid (parent) window found!
+        # Python probably started in no-shell-mode and/or by a task
+        # So will not log python console inputs
+        if not self.python_not_found_error_printed:
+          prettywarn("unable to find an valid window to get inputs from python console.", RuntimeWarning)
+          self.python_not_found_error_printed = True
+      else: print_debug("FocusChecker", f"found the window '{self.python_window_id}' as python console")
+    
     # Verify is kandinsky is imported
     if self.kandinsky_window_id == 0 and "kandinsky" in sys.modules:
       # To find kandinsky is more simple, no need to find parent processes with a valid window
@@ -61,25 +73,14 @@ class BaseFocusChecker:
           self.kandinsky_not_found_error_printed = True
       else: print_debug("FocusChecker", f"found the window '{self.kandinsky_window_id}' as kandinsky")
 
-
-    if DISABLE_KANDINSKY_INPUT_ONLY and self.python_window_id == 0:
-      # Find python console window and ignore the top level of tkinter
-      self.python_window_id = self.get_python_console_window()
-
-      if self.python_window_id == 0:
-        # No valid (parent) window found!
-        # Python probably started in no-shell-mode and/or by a task
-        # So will not log python console inputs
-        if not self.python_not_found_error_printed:
-          prettywarn("cannot find an valid window to get inputs from python console.", RuntimeWarning)
-          self.python_not_found_error_printed = True
-      else: print_debug("FocusChecker", f"found the window '{self.python_window_id}' as python console")
+    if self.kandinsky_window_id and not DISABLE_KANDINSKY_INPUT_ONLY:
+      self.python_window_id = 0
 
   def check_windows_availability(self):
     if self.kandinsky_window_id == -1:
-      raise RuntimeError(f"Kandinsky window destroyed. Cannot locate it.")
+      raise RuntimeError(f"Kandinsky window destroyed. Unable to locate it.")
     if self.python_window_id == -1:
-      raise RuntimeError(f"Python console window destroyed. Cannot locate it.")
+      raise RuntimeError(f"Python console window destroyed. Unable to locate it.")
 
   def check_window(self, wid, pid=0, classname=None, not_classname=False, contains_title=None):
     raise NotImplementedError
@@ -215,30 +216,25 @@ elif sys.platform.startswith("win"):
           msg = ctypes.wintypes.MSG()
           while (self.kandinsky_window_id != -1 or 
                  (DISABLE_KANDINSKY_INPUT_ONLY and self.python_window_id != -1)):
-            time.sleep(0.01)
+            time.sleep(0.1)
             r = ctypes.windll.user32.PeekMessageW(ctypes.byref(msg), None, 0, 0, 0)
 
             if r == 0:
               ctypes.windll.user32.TranslateMessage(msg)
               ctypes.windll.user32.DispatchMessageW(msg)
             elif r <=0 or msg.message == 0x0401: 
-              prettywarn("window create/destroy detector has been broken", RuntimeWarning)
+              prettywarn("window destroy detector has been broken", RuntimeWarning)
               break
 
             if search_windows:
-              #print(self.kandinsky_window_id, self.python_window_id)
-              # TODO: handle properly the case of both are enabled, and kandinsky never been imported
-              if self.kandinsky_window_id == 0:
-                self.kandinsky_window_id = self.get_kandinsky_window()
-              elif DISABLE_KANDINSKY_INPUT_ONLY and self.python_window_id == 0:
-                self.python_window_id = self.get_python_console_window() 
-              else: search_windows = False
+              self.bind_windows()
+              if self.kandinsky_window_id and self.python_window_id: search_windows = False
 
           ctypes.windll.user32.UnhookWinEvent(hook_id)
-        else: prettywarn("cannot hook the window create/destroy detector", RuntimeWarning)
+        else: prettywarn("cannot hook the window destroy detector", RuntimeWarning)
 
 
-      self.thread = Thread(name="WindowCreateDestroyDetector", target=register_hook, daemon=True)
+      self.thread = Thread(name="WindowDestroyDetector", target=register_hook, daemon=True)
       self.thread.start()
 
     def get_ppid(self, pid):
