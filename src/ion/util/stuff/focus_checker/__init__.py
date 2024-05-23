@@ -11,7 +11,7 @@ elif sys.platform.startswith("win"):
   from .win32 import FocusChecker
   
 elif sys.platform.startswith("linux"):
-  from .x11 import FocusChecker
+  from .linux import FocusChecker
   
 elif sys.platform.startswith("darwin"):
   from .darwin import FocusChecker
