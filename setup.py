@@ -41,7 +41,8 @@ setup(
   packages=[
     "ion",
     "ion.util",
-    "ion.util.stuff"
+    "ion.util.stuff",
+    "ion.util.stuff.focus_checker"
   ],
   package_data={"": ["**"]},
   install_requires=["pynput"],
