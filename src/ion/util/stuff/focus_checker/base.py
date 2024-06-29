@@ -12,10 +12,10 @@ class BaseFocusChecker:
   Base class for FocusChecker
 
   following methods must be overrided:
+    - check_window(wid, pid, classname, not_classname, contains_title)
     - search_window(pid, classname, not_classname, contains_title)
     - get_focussed_window()
     - get_ppid_of_pid(pid)
-    - window_exists(wid)
   """
 
   kandinsky_window_id = 0

@@ -90,7 +90,8 @@ class FocusChecker(BaseFocusChecker):
     while len(wins) != 0:
       win = wins.pop(0)
       try:
-        if self.check_window(win, pid, classname, not_classname, contains_title): return win.id
+        if self.check_window(win, pid, classname, not_classname, contains_title): 
+          return win.id
 
         subwins = win.query_tree().children
         if subwins != None: wins += subwins
