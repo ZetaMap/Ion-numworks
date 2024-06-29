@@ -20,7 +20,7 @@ with open("src/ion/README.md", "rt", encoding="utf-8") as f:
 clean_pycache(__file__[:__file__.rfind("\\")+1 or __file__.rfind("/")+1])
 setup(
   name="ion-numworks",
-  version="2.0.dev5",
+  version="2.0",
   author="ZetaMap",
   description="The porting of 'Ion module, from Numworks, for PC.",
   license='MIT',
