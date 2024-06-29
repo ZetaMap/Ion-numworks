@@ -68,15 +68,15 @@ class KeyLogger:
 
   @staticmethod
   def check_ok(code):
-    """Check the focus, the Keylogger and the keycode"""
+    """Check the Keylogger, the keycode and the focus"""
 
+    if not KeyLogger.is_running(): raise RuntimeError("KeyLogger not running")
+    elif type(code) != int: raise TypeError(f"keycode must be an integer, not {type(code).__name__}")
+    elif code not in KeyLogger._keyboard_state: raise IndexError(f"key with code '{code}' not found")
     try: KeyLogger._check_focus(True)
     except:
       KeyLogger.stop()
       raise
-    if not KeyLogger.is_running(): raise RuntimeError("KeyLogger not running")
-    elif type(code) != int: raise TypeError(f"keycode must be an integer, not {type(code).__name__}")
-    elif code not in KeyLogger._keyboard_state: raise IndexError(f"key with code '{code}' not found")
 
   @staticmethod
   def stop():
