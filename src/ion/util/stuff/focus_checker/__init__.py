@@ -14,11 +14,13 @@ elif sys.platform.startswith("linux"):
   from .linux import FocusChecker
   
 elif sys.platform.startswith("darwin"):
-  from .darwin import FocusChecker
+  #from .darwin import FocusChecker
+  prettywarn("MacOS support is not finished, some features will be not present", ImportWarning)
+  class FocusChecker(NoopFocusChecker): ...
   
 else:
     # Platform not supported for focus, create an fake FocusChecker class
   # The 'focus on only window' will be disabled
-  prettywarn(f"platform {sys.platform!r} not supported for inputs only in focussed window. "
+  prettywarn(f"platform {sys.platform!r} not supported for focussed window inputs. "
               "Inputs will be gets on entire system", ImportWarning)
   class FocusChecker(NoopFocusChecker): ...

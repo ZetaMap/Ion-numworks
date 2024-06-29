@@ -12,7 +12,8 @@ except ImportError as e:
 
 
 class FocusChecker(BaseFocusChecker):
-  classnames_to_search = ("Tk", "pygame")
+  # No concept of classname on MacOS
+  classnames = None
   #CGWindowListCreateDescriptionFromArray
   
   def check_window(self, wid, pid=0, classname=None, not_classname=False, contains_title=None):

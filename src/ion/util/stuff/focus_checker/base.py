@@ -11,14 +11,11 @@ class BaseFocusChecker:
   """
   Base class for FocusChecker
 
-  following methods must be redefined:
+  following methods must be overrided:
     - search_window(pid, classname, not_classname, contains_title)
     - get_focussed_window()
     - get_ppid_of_pid(pid)
     - window_exists(wid)
-
-  following variables must be redefined:
-    - classnames_to_search
   """
 
   kandinsky_window_id = 0
@@ -28,11 +25,13 @@ class BaseFocusChecker:
   script_pid = os.getpid()
   # used for a more specific search
   script_filename = os.path.basename(sys.argv[0])
-  # class list to search, must be redefined
-  classnames_to_search = None
+  
+  # must contains this name
+  winname = "kandinsky"
+  # 'TkTopLevel' is the class name of root tkinter window, 'pygame' because in old releases of kandinsky i used pygame
+  classnames = ("TkTopLevel", "pygame")
 
   def __init__(self):
-    if self.classnames_to_search is None: raise NameError(".classnames_to_search must be overrided")
     self.bind_windows()
     self.register_window_callbacks()
 
@@ -107,19 +106,19 @@ class BaseFocusChecker:
     raise NotImplementedError
 
   def get_kandinsky_window(self, wid=0):
-    return self.get_window(self.script_pid, self.classnames_to_search, False, "kandinsky", wid)
+    return self.get_window(self.script_pid, self.classnames, False, self.winname, wid)
 
   def get_python_console_window(self, wid=0):
-      wid = self.get_window(self.script_pid, self.classnames_to_search, True, self.script_filename, wid)
-      if wid == 0: wid = self.get_window(self.script_pid, self.classnames_to_search, True, wid=wid)
+      wid = self.get_window(self.script_pid, self.classnames, True, self.script_filename, wid)
+      if wid == 0: wid = self.get_window(self.script_pid, self.classnames, True, wid=wid)
 
       if wid == 0:
         # Python probably started by another process, in this mode, python don't have 'real' window
         # So try going back in the parent processes to find a valid window
         ppid = os.getppid()
         for _ in range(20): # Loop limit to avoid infinite loop
-          wid = self.get_window(ppid, self.classnames_to_search, True, self.script_filename, wid)
-          if wid == 0: wid = self.get_window(ppid, self.classnames_to_search, True, wid=wid)
+          wid = self.get_window(ppid, self.classnames, True, self.script_filename, wid)
+          if wid == 0: wid = self.get_window(ppid, self.classnames, True, wid=wid)
 
           # Found an valid window
           if wid: break

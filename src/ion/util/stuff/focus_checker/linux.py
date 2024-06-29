@@ -3,7 +3,7 @@ from threading import Thread
 
 import signal, warnings, subprocess
 
-try: 
+try:
   import Xlib
   import Xlib.xobject.drawable
 except ImportError as e:
@@ -31,10 +31,14 @@ else:
 # TODO: complete support of wayland
 is_wayland = graphical_server_type == "wayland"
 
+# remove the resource warning
+if ("ignore", None, ResourceWarning, None, 0) not in warnings.filters: 
+  warnings.simplefilter("ignore", ResourceWarning)
+
 
 class FocusChecker(BaseFocusChecker):
   # Use sys.argv[0] because the window classname of pygame if file name of script
-  classnames_to_search = ("Tk", BaseFocusChecker.script_filename)
+  classnames = ("Tk", BaseFocusChecker.script_filename)
 
   def __init__(self):
     self.display = Xlib.display.Display()
@@ -54,10 +58,10 @@ class FocusChecker(BaseFocusChecker):
     return p.value[0]
 
   def check_window(self, wid, pid=0, classname=None, not_classname=False, contains_title=None):
-  # get the window object by his id
+    # get the window object by his id
     if isinstance(wid, Xlib.xobject.drawable.Window): win = wid
     else: win = self.display.create_resource_object('window', wid)
-    
+
     wpid = self.get_wm_pid(win)
     found = False
 
@@ -97,11 +101,28 @@ class FocusChecker(BaseFocusChecker):
 
   def register_window_callbacks(self):
     def event_loop():
-      ...
-    
+      # grab events
+      self.display.screen().root.change_attributes(event_mask=Xlib.X.SubstructureNotifyMask)
+
+      search_windows = True
+      event = None
+      
+      while (self.kandinsky_window_id != -1 or
+            (DISABLE_KANDINSKY_INPUT_ONLY and self.python_window_id != -1)):
+        event = self.display.next_event()
+
+        if event.type == Xlib.X.DestroyNotify:
+          wid = event.window.id + 1 # idk why, i never the exact window id
+          if wid == self.kandinsky_window_id: self.kandinsky_window_id = -1
+          elif wid == self.python_window_id: self.python_window_id = -1
+
+        if search_windows:
+          self.bind_windows()
+          if self.kandinsky_window_id and self.python_window_id: search_windows = False
+
     self.thread = Thread(name="WindowDestroyDetector", target=event_loop, daemon=True)
     self.thread.start()
-  
+
   def get_kandinsky_window(self, wid=0):
     wid = super().get_kandinsky_window(wid)
 
@@ -109,7 +130,7 @@ class FocusChecker(BaseFocusChecker):
     # So try to find the window with a less reliable method.
     # EDIT: is in all linux distributions
     # EDIT2: Fixed in version 2.7.1 of kandinsky
-    if not wid: wid = self.get_window(0, self.classnames_to_search[0], False, "kandinsky", wid)
+    if not wid: wid = self.get_window(0, self.classnames[0], False, self.winname, wid)
 
     return wid
 
@@ -132,6 +153,4 @@ class FocusChecker(BaseFocusChecker):
     except ValueError: return -3
 
   def get_focussed_window(self):
-    # remove the resource warning
-    if ("ignore", None, ResourceWarning, None, 0) not in warnings.filters: warnings.simplefilter("ignore", ResourceWarning)
     return self.display.screen().root.get_full_property(self.display.get_atom('_NET_ACTIVE_WINDOW'), Xlib.X.AnyPropertyType).value[0]

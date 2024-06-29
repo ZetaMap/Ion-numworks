@@ -4,9 +4,6 @@ from threading import Thread
 import ctypes, ctypes.wintypes, time, subprocess
 
 class FocusChecker(BaseFocusChecker):
-  # 'TkTopLevel' is the class name of root tkinter window, 'pygame' because in old releases of kandinsky i used pygame
-  classnames_to_search = ("TkTopLevel", "pygame")
-
   def check_window(self, wid, pid=0, classname=None, not_classname=False, contains_title=None):
     if pid == 0: raise ValueError("a pid is needed")
 
@@ -46,8 +43,9 @@ class FocusChecker(BaseFocusChecker):
 
   def register_window_callbacks(self):
     def window_state(hWinEventHook, event, hwnd, idObject, idChild, dwEventThread, dwmsEventTime):
-      if hwnd == self.kandinsky_window_id: self.kandinsky_window_id = -1
-      elif hwnd == self.python_window_id: self.python_window_id = -1
+      if idChild == idObject:
+        if hwnd == self.kandinsky_window_id: self.kandinsky_window_id = -1
+        elif hwnd == self.python_window_id: self.python_window_id = -1
 
     def register_hook():
       hook = ctypes.WINFUNCTYPE(

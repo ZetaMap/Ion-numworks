@@ -10,7 +10,7 @@ except ImportError as e:
   from util.ion import Ion as __Ion, OS_MODE
 
 __name__ = "ion"
-__version__ = "2.0"
+__version__ = "2.0.dev5"
 try:
   with open("README.md", encoding="utf-8") as f: __doc__ = f.read()
   del f
