@@ -26,7 +26,7 @@ class KeyLogger:
       if key is None: return # because the key can be None in some cases
 
       print_debug("Pressed", key)
-      if hasattr(key, "char"): key = key.char
+      if hasattr(key, "char"): key = key.char.lower()
       try: KeyLogger._focused = KeyLogger._check_focus()
       except BaseException as e:
         # an error occurs while checking focus, so pass this error to the main thread
@@ -44,7 +44,7 @@ class KeyLogger:
       if key is None: return # because the key can be None is some cases
 
       print_debug("Released", key)
-      if hasattr(key, "char"): key = key.char
+      if hasattr(key, "char"): key = key.char.lower()
 
       for i in range(NUMBER_OF_KEYS):
         k = ALL_KEYS[i]["key"]
