@@ -31,19 +31,19 @@ I also created the porting of the [Numworks' Kandinsky module](https://github.co
 
 #### battery():
 * Parameters: **No parameters**
-* Description: Return battery voltage
+* Description: Return battery voltage *(give a fake result)*
 
 #### battery_level():
 * Parameters: **No parameters**
-* Description: Return battery level
+* Description: Return battery level *(give a fake result)*
 
 #### battery_ischarging():
 * Parameters: **No parameters**
-* Description: Return True if the battery is charging
+* Description: Return True if the battery is charging *(give a fake result)*
 
 #### set_brightness():
 * Parameters: ``level``
-* Description: Set brightness level of screen
+* Description: Set brightness level of screen *(do nothing)*
 
 #### get_brightness():
 * Parameters: **No parameters**
@@ -103,16 +103,18 @@ I also created the porting of the [Numworks' Kandinsky module](https://github.co
 
 ### Environ variables
 > [!IMPORTANT]
-> You must make these additions before importing ion module, otherwise the changes will not take effect.
+> You must make these additions before importing the ion module, otherwise the changes will not take effect.
 
-Some options can be modified by environ variables.<br>
-To do this, first add a compatibility check:
+Some library options can be modified by environ variables.<br>
+To do so, add a compatibility check and place the environ variables into:
 ```python
 try:
   import os
   "<environ variables here>"
 except: pass
 ```
+
+<br>
 
 * Change starting OS (methods according to the selected os will be created): <br>
 *(Option name is same as Kandinsky so that, if both libraries are present, they are synchronized)*
@@ -131,26 +133,26 @@ os.environ['ION_OS_MODE'] = '<number>'
 
 * Enable debug mode:
 ```python
-# Print full error stacktrace, the original pressed key and methods calls
+# Print full error stacktrace, the pressed key and methods calls
 os.environ['ION_ENABLE_DEBUG'] = ''
 ```
 
 * Disable warnings:
 ```python
-# Will be disable all ion warnings
+# Will disable all ion warnings, like not found windows or incompatibilities.
 os.environ['ION_DISABLE_WARNINGS'] = ''
 ```
 
-* Disable reading inputs only in kandinsky window (if kandinsky is not imported globally, this option is enabled by default):
+* Disable inputs reading only from the kandinsky window:
 ```python
-# This options allow to read keyboard inputs in python console and kandinsky window
-# By default it just read kandinsky window (only if is focused)
-# Note: if is not imported globally, this option is enabled by default
+# This options allow keyboard inputs reading from the python console and the kandinsky window
+# By default it only reads the kandinsky window (only if focused by user)
+# Note: if kandinsky is not imported globally, this option is enabled by default
 os.environ['ION_DISABLE_KANDINSKY_INPUT_ONLY'] = ''
 ```
 
-* Get keyboard inputs everywhere (not only in kandinsky window or python console):
+* Get keyboard inputs everywhere (not only from kandinsky window or python console):
 ```python
-# Allow to get inputs in entire system, like previous version of library
+# Allow to get inputs from entire system, like previous version of library
 os.environ['ION_ENABLE_GET_INPUT_EVERYWHERE'] = ''
 ```
