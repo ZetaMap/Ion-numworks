@@ -98,7 +98,7 @@ I also created the porting of the [Numworks' Kandinsky module](https://github.co
 | .            | .                 | KEY_DOT              | 49
 | EE           | !                 | KEY_EE               | 50
 | Ans          | A                 | KEY_ANS              | 51
-| EXE          | Insert *(For MacOS: CTRL+Return)*           | KEY_EXE              | 52
+| EXE          | Insert *(For MacOS: Shift+Return)*           | KEY_EXE              | 52
 
 
 ### Environ variables

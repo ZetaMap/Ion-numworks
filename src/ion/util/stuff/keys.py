@@ -45,8 +45,8 @@ KEY_MINUS: int =            {'code': 46, 'name': '-',         'key': '-'}
 KEY_ZERO: int =             {'code': 48, 'name': '0',         'key': '0'}
 KEY_DOT: int =              {'code': 49, 'name': '.',         'key': '.'}
 KEY_EE: int =               {'code': 50, 'name': 'EE',        'key': '!'}
-KEY_ANS: int =              {'code': 51, 'name': 'Ans',       'key': 'a'} # vv Insert doesn't exists on mac keyboards, so use ctrl+enter
-KEY_EXE: int =              {'code': 52, 'name': 'EXE',       'key': (Key.ctrl, Key.enter) if sys.platform.startswith("darwin") else Key.insert}
+KEY_ANS: int =              {'code': 51, 'name': 'Ans',       'key': 'a'} # vv Insert doesn't exists on mac keyboards, so use shift+enter
+KEY_EXE: int =              {'code': 52, 'name': 'EXE',       'key': (Key.shift, Key.enter) if sys.platform.startswith("darwin") else Key.insert}
 
 # Put all keys in ALL_KEYS and redefine each key only by its code
 ALL_KEYS = []
