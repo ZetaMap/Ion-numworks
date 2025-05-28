@@ -87,6 +87,7 @@ class FocusChecker(BaseFocusChecker):
     self.thread.start()
 
   def get_ppid(self, pid):
+    # TODO: idk how to get this information better than that
     # Use 'wmic' command to get ppid of process
     try: result = [i.strip() for i in subprocess.check_output(f"wmic process where ProcessId={pid} get ParentProcessId".split(' '), stderr=subprocess.PIPE).decode().splitlines() if i.strip() != '']
     except subprocess.CalledProcessError: return -1

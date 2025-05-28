@@ -1,4 +1,5 @@
 from pynput.keyboard import Key
+import sys # for macos compatibility
 
 KEY_LEFT: int =             {'code': 0,  'name': 'left',      'key': Key.left}
 KEY_UP: int =               {'code': 1,  'name': 'up',        'key': Key.up}
@@ -8,8 +9,8 @@ KEY_OK: int =               {'code': 4,  'name': 'OK',        'key': Key.enter}
 KEY_BACK: int =             {'code': 5,  'name': 'back',      'key': Key.delete}
 KEY_HOME: int =             {'code': 6,  'name': 'home',      'key': Key.esc}
 KEY_ONOFF: int =            {'code': 7,  'name': 'onOff',     'key': Key.end}
-KEY_SHIFT: int =            {'code': 12, 'name': 'shift',     'key': (Key.shift_l, Key.shift_r)}
-KEY_ALPHA: int =            {'code': 13, 'name': 'alpha',     'key': (Key.ctrl_l, Key.ctrl_r)}
+KEY_SHIFT: int =            {'code': 12, 'name': 'shift',     'key': Key.shift}
+KEY_ALPHA: int =            {'code': 13, 'name': 'alpha',     'key': Key.ctrl}
 KEY_XNT: int =              {'code': 14, 'name': 'xnt',       'key': 'x'}
 KEY_VAR: int =              {'code': 15, 'name': 'var',       'key': 'v'}
 KEY_TOOLBOX: int =          {'code': 16, 'name': 'toolbox',   'key': '"'}
@@ -44,18 +45,23 @@ KEY_MINUS: int =            {'code': 46, 'name': '-',         'key': '-'}
 KEY_ZERO: int =             {'code': 48, 'name': '0',         'key': '0'}
 KEY_DOT: int =              {'code': 49, 'name': '.',         'key': '.'}
 KEY_EE: int =               {'code': 50, 'name': 'EE',        'key': '!'}
-KEY_ANS: int =              {'code': 51, 'name': 'Ans',       'key': 'a'}
-KEY_EXE: int =              {'code': 52, 'name': 'EXE',       'key': Key.insert}# TODO: not on macos, find another key
+KEY_ANS: int =              {'code': 51, 'name': 'Ans',       'key': 'a'} # vv Insert doesn't exists on mac keyboards, so use ctrl+enter
+KEY_EXE: int =              {'code': 52, 'name': 'EXE',       'key': (Key.ctrl, Key.enter) if sys.platform.startswith("darwin") else Key.insert}
 
 # Put all keys in ALL_KEYS and redefine each key only by its code
 ALL_KEYS = []
+ALL_KEYS_UNORDERED = {}
+ALL_HOTKEYS = []
 
 for n, k in locals().copy().items():
   # Avoid to re-replace variable if file is imported at multiple times
   if n.startswith("KEY_") and type(k) == dict:
     k.update({'field': n})
-    locals()[n] = k['code']
+    locals()[n] = k['code'] # TODO: it's a good way to do that?
     ALL_KEYS.append(k)
+    ALL_KEYS_UNORDERED[k['key']] = k
+    if type(k['key']) in (tuple, list): ALL_HOTKEYS.append(k)
 
 NUMBER_OF_KEYS = len(ALL_KEYS)
+
 __all__ = [k['field'] for k in ALL_KEYS]

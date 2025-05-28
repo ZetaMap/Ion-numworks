@@ -12,11 +12,11 @@ except ImportError as e:
 
 
 # Check graphical server type
-try: graphical_server_type = subprocess.check_output("loginctl show-session $(loginctl | awk '/'$(whoami)'/ {print $1}') -p Type | awk -F = '{print $2}'", shell=True, stderr=subprocess.STDOUT).decode().strip()
+try: graphical_server_type = subprocess.check_output("loginctl show-session $(loginctl | awk '/'$(whoami)'/ {print $1}') -p Type --value", shell=True, stderr=subprocess.STDOUT).decode().strip()
 except subprocess.CalledProcessError as e:
   if "not been booted" in e.stdout.decode().strip(): # propably a non graphical system or no login manager
-    prettywarn("no graphical server instance detected, falling back to x11 support", RuntimeWarning)
-  else: prettywarn("failed to get graphical server type, falling back to x11 support", RuntimeWarning)
+        prettywarn("no graphical server instance detected, falling back to x11 support", RuntimeWarning)
+  else: prettywarn("unable to get the graphical server type, falling back to x11 support", RuntimeWarning)
   # Fall baack to x11 support
   graphical_server_type = "x11"
 else:
@@ -138,13 +138,14 @@ class FocusChecker(BaseFocusChecker):
   def get_python_console_window(self, wid=0):
     # Check if is wayland because we cannot locate all windows due to "security reasons"
     if is_wayland and not self.kandinsky_not_found_error_printed:
-      prettywarn("Wayland (used by GNOME, Ubuntu or KDE) is not fully supported. "
-                  "The python console window will probably not be localized correctly. "
-                  "To avoid this problem, start your session in X11 mode.", UserWarning)
+      prettywarn("Wayland (used by most recent distributions) is not fully supported. "
+                 "The python console window will probably not be localized correctly. "
+                 "To avoid this problem, please restart your session in X11 mode.", UserWarning)
 
     return super().get_python_console_window(wid)
 
   def get_ppid(self, pid):
+    # TODO: idk how to get this information better than that
     try: result = subprocess.check_output(f"ps -o ppid= {pid}".split(' ')).decode().strip()
     except subprocess.CalledProcessError: return -1
 

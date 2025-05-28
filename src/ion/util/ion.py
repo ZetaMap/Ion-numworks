@@ -33,31 +33,40 @@ except: pass
 __all__ = ["Ion"]
 
 class Ion:
-  KeyLogger() # Start the key logger
-  brightness = 240
+  KeyLogger.start()
 
+  @staticmethod
   def keydown(k):
     if type(k) != int: raise TypeError(f"can't convert {type(k).__name__} to int")
-    try: return KeyLogger.get_key(k)
+    try: return KeyLogger.is_pressed(k)
     except IndexError: return False
 
+  @staticmethod
   def get_keys():
-    return set([k["name"] for k in ALL_KEYS if KeyLogger.get_key(k["code"])])
+    return set(k["name"] for k in ALL_KEYS if KeyLogger.is_pressed(k["code"]))
 
-  # All the following functions only give a fake result to give a real look of library
+  # All the following functions give a fake result, to have a real look of the library
+  @staticmethod
   def battery(): return 4.20+randint(900, 1500)/10**5+random()/10**5
+  @staticmethod
   def battery_level(): return 3
+  @staticmethod
   def battery_ischarging(): return True
+  _brightness = 240
+  @staticmethod
   def set_brightness(level):
     if type(level) != int: raise TypeError(f"can't convert {type(level).__name__} to int")
-    Ion.brightness = 240 if level%256 > 240 else level%256
-  def get_brightness(): return Ion.brightness
+    Ion._brightness = 240 if level%256 > 240 else level%256
+  @staticmethod
+  def get_brightness(): return Ion._brightness
 
-  # Caller
+  # Wrapped caller
+  @staticmethod
   def call(method, *args, **kwargs):
     try:
-      print_debug("Event", method.__name__, (*args, *[f"{k}={repr(v)}" for k, v in kwargs.items()]), sep='')
-      KeyLogger.raise_if_error() # raise the last KeyLogger error to main thread
+      if is_debug(): # To avoid making unnecessary work
+        print_debug("Event", method.__name__, (*args, *[f"{k}={repr(v)}" for k, v in kwargs.items()]), sep='')
+      KeyLogger.raise_if_error() # raise the last KeyLogger error to the main thread
       return method(*args, **kwargs), None
     except BaseException as e:
       return None, Exception.with_traceback(

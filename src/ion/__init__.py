@@ -3,14 +3,19 @@ This is just a little low level library for fetching keyboard input.
 This is a porting of the Numworks module, and add other methods created by others OS (like Omega or Upsilon).
 """
 
-try: from .util.ion import Ion as __Ion, OS_MODE
+try: 
+  from .util.ion import Ion as __Ion, OS_MODE
+  from .util.stuff.keys import *
+  from .util.stuff.keys import ALL_KEYS
 except ImportError as e:
   if "relative import" not in e.msg:
     raise
   from util.ion import Ion as __Ion, OS_MODE
+  from util.stuff.keys import *
+  from util.stuff.keys import ALL_KEYS
 
 __name__ = "ion"
-__version__ = "2.0"
+__version__ = "2.1"
 try:
   with open("README.md", encoding="utf-8") as f: __doc__ = f.read()
   del f
@@ -25,16 +30,7 @@ __all__ = [
   "get_brightness",
   "file", # idk what is this
 ]
-
-
-### All keys of Numworks
-try: from .util.stuff.keys import *
-except ImportError as e:
-  if "relative import" not in e.msg:
-    raise
-  from util.stuff.keys import *
-# Add all keys in __all__
-__all__.extend([i for i in dir() if i.startswith("KEY_")])
+__all__.extend(n["field"] for n in ALL_KEYS)
 
 
 ### Methods
@@ -111,4 +107,4 @@ if OS_MODE:
   if OS_MODE == 1:
     del file
     __all__.remove("file")
-del OS_MODE
+del OS_MODE, ALL_KEYS

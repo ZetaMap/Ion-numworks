@@ -11,11 +11,11 @@ class BaseFocusChecker:
   """
   Base class for FocusChecker
 
-  following methods must be overrided:
+  following methods must be overrides:
     - check_window(wid, pid, classname, not_classname, contains_title)
     - search_window(pid, classname, not_classname, contains_title)
     - get_focussed_window()
-    - get_ppid_of_pid(pid)
+    - get_ppid(pid)
   """
 
   kandinsky_window_id = 0
@@ -35,16 +35,19 @@ class BaseFocusChecker:
     self.bind_windows()
     self.register_window_callbacks()
 
-  def __call__(self, just_check=False):
-    # check if windows still exists, to stop the KeyLogger properly
-    self.check_windows_availability()
-    if just_check: return False
-    
+  def __call__(self):
+    self.available()
     self.bind_windows()
     focussed = self.get_focussed_window()
 
     return ((self.python_window_id and focussed == self.python_window_id) or
             (self.kandinsky_window_id and focussed == self.kandinsky_window_id))
+
+  def available(self):
+    """Check if windows still exists, to stop the KeyLogger properly"""
+    self.check_windows_availability()
+
+  ### Internal api
 
   def bind_windows(self):
     if (DISABLE_KANDINSKY_INPUT_ONLY or self.kandinsky_window_id == 0) and self.python_window_id == 0:
@@ -141,4 +144,4 @@ class BaseFocusChecker:
 # Fake FocusChecker class, will always return True
 class NoopFocusChecker(BaseFocusChecker):
   def __init__(self): return
-  def __call__(self, just_check=False): return True
+  def __call__(self): return True

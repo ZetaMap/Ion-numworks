@@ -19,6 +19,9 @@ DEBUG = False
 def set_debug(enabled):
   global DEBUG
   DEBUG = enabled
+  
+def is_debug():
+  return DEBUG
 
 def print_debug(type, *msgs, **print_args):
   if DEBUG:
